@@ -2,5 +2,5 @@ import numpy as np
 from matplotlib import pyplot as plt
 from H_operator import Hi
 
-def Nk( Fi, f, F=None, ti=1, dt=0.001):
-    return np.sum( Fi*np.exp( -Hi(f,F,ti,dt) ) )
+def Nk( Fik, f, F=None, ti=1.0, dt=1.0):
+    return np.sum( Fik*np.exp( -Hi(f,F,ti,dt) ) )
