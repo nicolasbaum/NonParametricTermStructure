@@ -1,4 +1,5 @@
 from sympy import Symbol, diff, lambdify
+from numba import jit
 import numpy as np
 
 def diffNtimes(myfunction, N):
@@ -7,6 +8,7 @@ def diffNtimes(myfunction, N):
         f = lambdify(x, diff(myfunction(x), x), "numpy")
     return f
 
+@jit
 def scalarProduct(function1,function2,p,tRange):
     firstSum=0
     for i in range(p-1):

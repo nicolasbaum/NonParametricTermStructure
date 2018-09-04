@@ -1,9 +1,11 @@
 import numpy as np
 from sympy import Symbol, lambdify
+from numba import jit
 
 def PhiFunction(t,j):
     return np.power(t,j)/np.math.factorial(j)
 
+@jit
 def getPhiBasisFunctions(p,start=0):
     '''
     Given p, it should return a collection of basis functions of the form
