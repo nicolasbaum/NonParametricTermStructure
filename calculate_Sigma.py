@@ -1,0 +1,1 @@
+#ToDo: Should be easy. It's the cartesian product of scalar products of ksi
