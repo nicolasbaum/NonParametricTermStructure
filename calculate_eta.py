@@ -36,4 +36,4 @@ def eta_k(t,Fik,f,F,p,tRange):
     :return: eta for kth bond evaluated in t
     '''
 
-    return -Nk(Fik, f, tRange, F) * _outter_integral(F, f, t, p, tRange)
+    return -Nk(Fik, f, F, tRange) * _outter_integral(F, f, t, p, tRange)

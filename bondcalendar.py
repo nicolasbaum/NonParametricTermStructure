@@ -60,18 +60,14 @@ class ListOfCalendars(object):
 class BondCalendarLoader(object):
     def __init__(self, xlsPath):
         self.xlsPath = xlsPath
+        self.calendarDFs = pd.read_excel(self.xlsPath, sheet_name=None)
     
     def getCalendarList(self):
-        calendarDFs = pd.read_excel(self.xlsPath,sheet_name=None)
-        self.calendarDict = { k:calendarDFs[k] for k in BOND_TICKERS }
-        return ListOfCalendars( [ Calendar(calendarDFs[bondName]) for bondName in BOND_TICKERS ] )
+        self.calendarDict = { k:self.calendarDFs[k] for k in BOND_TICKERS }
+        return ListOfCalendars( [ Calendar(self.calendarDFs[bondName]) for bondName in BOND_TICKERS ] )
 
-    #ThrowAway method. Should be replaced by scrapper-like method
     def getBondPrices(self):
-        calendarDFs = pd.read_excel(self.xlsPath,sheet_name=None)
-        self.pricesDF = calendarDFs.get('Prices').loc[:,['Bond','Price']]
-        return self.pricesDF
-
-bcl = BondCalendarLoader('calendars.xlsx')
-cl = bcl.getCalendarList()
-prices = bcl.getBondPrices()
+        pricesDF = self.calendarDFs.get('Prices').loc[:,['Bond','Price']]
+        pricesDF.set_index('Bond')
+        pricesDF.reindex(BOND_TICKERS)
+        return pricesDF['Price'].values

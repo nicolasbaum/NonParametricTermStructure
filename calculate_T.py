@@ -10,7 +10,7 @@ def _T_k(p, Fik, f0, F, tRange):
     T = np.zeros(p)
     phiBasis = getPhiBasisFunctions(p,start=1)
     for phiIndex, phiFunc in enumerate(phiBasis):
-        T[phiIndex] = Dk(Fik, f0, phiFunc, tRange, F)
+        T[phiIndex] = Dk(Fik, f0, phiFunc, F, tRange)
     return T
 
 def T(p,Fi,f0,F,tSpan):
