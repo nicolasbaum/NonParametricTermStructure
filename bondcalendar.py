@@ -18,7 +18,8 @@ BOND_TICKERS = [
             ]
 
 class Calendar(object):
-    def __init__(self, df):
+    def __init__(self, df, bondName):
+        self.bondName = bondName
         self.dates = self._tranformDates( df['Date'].values )
         self.payments = df['Total'].values
         self.paymentsDict = {d:p for d,p in zip(self.dates, self.payments)}
@@ -64,10 +65,10 @@ class BondCalendarLoader(object):
     
     def getCalendarList(self):
         self.calendarDict = { k:self.calendarDFs[k] for k in BOND_TICKERS }
-        return ListOfCalendars( [ Calendar(self.calendarDFs[bondName]) for bondName in BOND_TICKERS ] )
+        return ListOfCalendars( [ Calendar(self.calendarDFs[bondName], bondName) for bondName in BOND_TICKERS ] )
 
     def getBondPrices(self):
         pricesDF = self.calendarDFs.get('Prices').loc[:,['Bond','Price']]
         pricesDF.set_index('Bond')
         pricesDF.reindex(BOND_TICKERS)
-        return pricesDF['Price'].values
+        return pricesDF
