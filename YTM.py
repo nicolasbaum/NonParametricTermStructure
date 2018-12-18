@@ -1,5 +1,5 @@
 import numpy as np
-from scipy import optimize
+from scipy import optimize, interpolate
 import datetime
 
 class YTMCalculator(object):
@@ -25,3 +25,18 @@ class YTMCalculator(object):
     @classmethod
     def daysToDate(cls, startDate, endDate):
         return np.busday_count(startDate, endDate)
+
+    def dateToYears(self, date):
+        days = self.daysToDate(self.calcDate,date)
+        return days/self.daysInYear
+
+    def getInterpolatedYieldCurve(self, bondCalendars, bondPrices):
+        """Returned variable is an interpolated object"""
+        maturitiesInYears = [0]
+        yields = [0]
+        for i,calendar in enumerate(bondCalendars):
+            maturitiesInYears.append(self.dateToYears( calendar.dates[-1]) )
+            yields.append( self.calculate(calendar.paymentsDict,
+                                          bondPrices[bondPrices['Bond'] == calendar.bondName].Price.values[0]) )
+
+        return interpolate.interp1d( maturitiesInYears, yields, bounds_error=False, fill_value='extrapolate',kind='cubic' )
