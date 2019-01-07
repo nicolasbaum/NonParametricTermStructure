@@ -1,5 +1,5 @@
-import numpy as np
-from matplotlib import pyplot as plt
+from scipy.integrate import cumtrapz
+from optimization import optCumTrapz
 
 def Hi(f, F, tRange):
-    return np.trapz( F( f(tRange) ), tRange )
+    return optCumTrapz( F( f(tRange) ), tRange, initial=0)

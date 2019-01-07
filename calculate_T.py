@@ -13,7 +13,7 @@ def _T_k(p, Fik, f0, F, tRange):
         T[phiIndex] = Dk(Fik, f0, phiFunc, F, tRange)
     return T
 
-def T(p,Fi,f0,F,tSpan):
+def getT(p, Fi, f0, F, tSpan):
     result=np.zeros((len(Fi),p))
     for indexFi, Fik in enumerate(Fi):
         tRange=tSpan[:len(Fik)]

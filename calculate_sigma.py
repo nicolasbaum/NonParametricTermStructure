@@ -5,18 +5,19 @@ from calculate_ksi import ksi_k
 
 
 
-def sigma( Fi, f, F, p, tSpan ):
-    listOfksiFuncs = ksiFuncs( Fi, f, F, p )
+def getSigma(Fi, f, F, p, tRange):
+    listOfksiFuncs = ksiFuncs( Fi, f, F, p, tRange )
     numberOfBonds = len(Fi)
     result = np.zeros((numberOfBonds,numberOfBonds))
     for i in range(numberOfBonds):
         for j in range(numberOfBonds):
-            result[i,j]=scalarProduct(listOfksiFuncs[i],listOfksiFuncs[i],p,tSpan)
+            result[i,j]=scalarProduct(listOfksiFuncs[i],listOfksiFuncs[j],p,tRange)
     return result
 
-def ksiFuncs( Fi, f, F, p ):
+def ksiFuncs( Fi, f, F, p, tRange):
+    #p = Degree of derivative used in the smoothness equation
     ksiFuncs=[]
-    t = Symbol('t')
+    #tRange = Symbol('tRange')
     for indexFi, Fik in enumerate(Fi):
-        ksiFuncs.append( lambdify(t, ksi_k(Fik, f, F, p, t), t, "numpy") )
+        ksiFuncs.append( ksi_k(Fik, f, F, p, tRange ) )
     return ksiFuncs
