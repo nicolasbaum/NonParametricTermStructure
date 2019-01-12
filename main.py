@@ -40,8 +40,6 @@ f0Vector=invF(np.diff(r0 * tSpan) / np.diff(tSpan))
 f0Vector=np.concatenate([[f0Vector[0]], f0Vector])
 f0=UnivariateSpline(np.concatenate([[0],tSpan]), np.concatenate( [[0], f0Vector ]))
 
-#######Just for check#######
-#Reconverting f0 into yieldCurve just to check everything is working
 
 steps = 0
 while steps < 4:
@@ -49,7 +47,7 @@ while steps < 4:
     #Idea behind f=f0 is that I want to converge to the final result where previous iteration = current f
     sigma = getSigma( Fi, f0, F, p, tSpan)
     # T = getT(p, Fi, f0, F, tSpan)
-    # for calendar in cl.calendars:
-    #     Pk = bondPrices.loc(bon)
-    # yk = tilde_yk(Pk, Fik, f0, f0, tSpan, F)  # This should be vectorized bond per bond with Fik and Pk
-    # etak = eta_k(t,Fik,f0,F,p,tRange)   #Iterate bonds and another degree of vectorization with time t
+    #     # for calendar in cl.calendars:
+    #     #     Pk = bondPrices.loc(bon)
+    #     # yk = tilde_yk(Pk, Fik, f0, f0, tSpan, F)  # This should be vectorized bond per bond with Fik and Pk
+    #     # etak = eta_k(t,Fik,f0,F,p,tRange)   #Iterate bonds and another degree of vectorization with time t
