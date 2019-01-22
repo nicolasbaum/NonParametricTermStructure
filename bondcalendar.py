@@ -50,12 +50,13 @@ class ListOfCalendars(object):
     def getPaymentMatrix(self):
         minDate = min([min(calendar.dates) for calendar in self.calendars]+[np.datetime64(datetime.date.today(),'D')])
         maxDate = max([max(calendar.dates) for calendar in self.calendars])
-        dates = pd.bdate_range(minDate, maxDate)
-        dates = [d.to_datetime64().astype('datetime64[D]') for d in dates]
+        dates = pd.date_range(start=pd.to_datetime(minDate).replace(day=1), end=pd.to_datetime(maxDate).replace(day=1), freq='MS')
         pmtMatrix = np.empty((len(self.calendars),len(dates)))
         for i,calendar in enumerate(self.calendars):
             for j,date in enumerate(dates):
-                pmtMatrix[i,j]=calendar.paymentsDict[date] if date in calendar.dates else 0
+                paymentsDict = { pd.to_datetime(k).replace(day=1) : v for k,v in calendar.paymentsDict.items() }
+                calendarDates = [ pd.to_datetime(d).replace(day=1) for d in calendar.dates ]
+                pmtMatrix[i,j] = paymentsDict[date] if date in calendarDates else 0
         return pmtMatrix
 
 class BondCalendarLoader(object):
