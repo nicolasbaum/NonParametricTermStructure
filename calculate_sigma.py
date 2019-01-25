@@ -1,6 +1,5 @@
 import numpy as np
 from scalar_product import scalarProduct
-from sympy import Symbol, lambdify
 from calculate_ksi import ksi_k
 
 

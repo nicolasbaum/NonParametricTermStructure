@@ -2,8 +2,8 @@ import numpy as np
 from sympy import Symbol, diff
 from sympy.utilities import lambdify
 from scipy.interpolate import UnivariateSpline
-from numba import jit
-from N_operator import Nk
+from optimization import optCumTrapz, range_memoize
+from H_operator import Hi
 
 N_POINTS = 10000
 
@@ -38,7 +38,7 @@ def _outter_integral(F,f,t,p,tRangeForBond):
     x = Symbol('x')
     diffedF = _sthDerivativeOff(1,F)
     inner_sum = np.vectorize( lambda tau: _inner_sum(tau,t,p) )
-    return np.trapz(_evaluateFunction(diffedF,f(tRangeForBond))*inner_sum(tRangeForBond),tRangeForBond)
+    return optCumTrapz(_evaluateFunction(diffedF,f(tRangeForBond))*inner_sum(tRangeForBond),tRangeForBond, initial=0)
 
 def eta_k(t,Fik,f,F,p,tRange):
     '''
@@ -50,5 +50,6 @@ def eta_k(t,Fik,f,F,p,tRange):
     :param tRange: Time vector
     :return: eta for kth bond evaluated in t
     '''
-    tRangeForBond = tRange[:len(Fik)]
-    return -Nk(Fik, f, F, tRangeForBond) * _outter_integral(F, f, t, p, tRangeForBond)
+    bondPeriods = int(np.nonzero(Fik)[0][-1])+1
+    tRangeForBond = tRange[:bondPeriods]
+    return -np.sum(  np.exp( -Hi(f, F, tRangeForBond) ) * Fik[:bondPeriods] * _outter_integral(F, f, t, p, tRangeForBond) )

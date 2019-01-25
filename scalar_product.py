@@ -1,10 +1,13 @@
 from sympy import Symbol, diff, lambdify
-from optimization import optTrapz
+from scipy.interpolate import UnivariateSpline
 import numpy as np
+
 
 def diffNtimes(myfunction, N):
     if N==0:
         return myfunction
+    if isinstance(myfunction, UnivariateSpline):
+        return myfunction.derivative(N)
     x = Symbol('tau')
     for _ in range(N):
         f = lambdify(x, diff(myfunction(x), x), "numpy")

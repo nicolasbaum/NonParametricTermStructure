@@ -2,7 +2,6 @@ from calculate_eta import eta_k
 import numpy as np
 from phi_basis_functions import getPhiBasisFunctions
 from scipy.interpolate import UnivariateSpline
-from optimization import optTrapz
 
 def ksi_k(Fik, f, F, p, tRange):
     phiBasisFunctions = getPhiBasisFunctions(p, tRange)     #phiFunctions are a basis of W0
@@ -14,7 +13,7 @@ def ksi_k(Fik, f, F, p, tRange):
     #Subtracting projection of eta_k in each phiFunc to get projection of eta_k in W1
     for phiIndex, phiFunc in enumerate(phiBasisFunctions):
         phiFuncInTRange = phiFunc(tRange)
-        W0coefficients[phiIndex]=optTrapz( eta_kEvaluatedInTRange*phiFuncInTRange, tRange )
+        W0coefficients[phiIndex]=np.trapz( eta_kEvaluatedInTRange*phiFuncInTRange, tRange )
         ksi_kEvaluatedInTRange -= W0coefficients[phiIndex]*phiFuncInTRange
 
     return UnivariateSpline(tRange, ksi_kEvaluatedInTRange)

@@ -1,7 +1,6 @@
 import numpy as np
 from scalar_product import scalarProduct
 from sympy import Symbol, lambdify
-from numba import jit
 
 def PhiFunction(t,j):
     return np.power(t,j)/np.math.factorial(j)

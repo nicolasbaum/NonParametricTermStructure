@@ -4,7 +4,6 @@ import scipy.integrate
 from scipy.interpolate.interpolate import interp1d
 
 optCumTrapz = jit(scipy.integrate.cumtrapz, parallel = True, fastmath=True )
-optTrapz = jit(scipy.integrate.trapz, parallel = True, fastmath=True)
 
 class Interp1dNumeric(interp1d):
     """ Wrapper for interp1 to raise TypeError for object array input
@@ -22,4 +21,22 @@ class Interp1dNumeric(interp1d):
         if np.asarray(x).dtype.type == np.object_:
             raise TypeError('Object arrays not supported')
         return super(Interp1dNumeric, self).__call__(x)
+
+class range_memoize:
+    def __init__(self, rangeArgumentPosition):
+        self.rangeArgumentPosition = rangeArgumentPosition
+        self.memo = {}
+
+    def __call__(self, f):
+        def wrapped_f(*args):
+            fArgs = args[:self.rangeArgumentPosition]+args[self.rangeArgumentPosition+1:]
+            rangeArg = args[self.rangeArgumentPosition]
+            if fArgs in self.memo:
+                length = len(rangeArg)
+                if length <= len(self.memo[fArgs][0]):
+                    return self.memo[fArgs][1][:length]
+            result = f(*args)
+            self.memo[fArgs]=( rangeArg, result )
+            return result
+        return wrapped_f
 

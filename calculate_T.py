@@ -8,7 +8,7 @@ def _T_k(p, Fik, f0, F, tRange):
     This function returns T for kth bond
     '''
     T = np.zeros(p)
-    phiBasis = getPhiBasisFunctions(p,start=1)
+    phiBasis = getPhiBasisFunctions(p,tRange,start=1)
     for phiIndex, phiFunc in enumerate(phiBasis):
         T[phiIndex] = Dk(Fik, f0, phiFunc, F, tRange)
     return T
@@ -16,6 +16,7 @@ def _T_k(p, Fik, f0, F, tRange):
 def getT(p, Fi, f0, F, tSpan):
     result=np.zeros((len(Fi),p))
     for indexFi, Fik in enumerate(Fi):
-        tRange=tSpan[:len(Fik)]
-        result[indexFi,:]=_T_k(p, Fik, f0, F, tRange)
+        bondPeriods = int(np.nonzero(Fik)[0][-1]) + 1
+        tRangeForBond = tSpan[:bondPeriods]
+        result[indexFi,:]=_T_k(p, Fik[:bondPeriods], f0, F, tRangeForBond)
     return result
