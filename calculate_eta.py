@@ -1,12 +1,16 @@
 import numpy as np
+from functools import lru_cache
+from numba import jit
 from sympy import Symbol, diff
 from sympy.utilities import lambdify
 from scipy.interpolate import UnivariateSpline
 from optimization import optCumTrapz, range_memoize
 from H_operator import Hi
 
-N_POINTS = 10000
+N_POINTS = 1000
 
+@lru_cache(maxsize=None)
+@jit
 def _inner_integral(t, tau, p):
     integral_range=min([t,tau])
     u=np.linspace(0,integral_range,N_POINTS)    #ToDo: Validate this...
@@ -34,22 +38,23 @@ def _evaluateFunction(f,points):
         return fv(np.array(points))
     return f(points)
 
+@range_memoize(4)
 def _outter_integral(F,f,t,p,tRangeForBond):
     x = Symbol('x')
     diffedF = _sthDerivativeOff(1,F)
     inner_sum = np.vectorize( lambda tau: _inner_sum(tau,t,p) )
     return optCumTrapz(_evaluateFunction(diffedF,f(tRangeForBond))*inner_sum(tRangeForBond),tRangeForBond, initial=0)
 
-def eta_k(t,Fik,f,F,p,tRange):
+def eta_k(t, Fik, f, F, p, tSpan):
     '''
     :param t: t where I want to evaluate eta_k
     :param Fik: Array of payments of kth bond
     :param f: f function iteration(what we want to solve)
     :param F: function F which transforms f
     :param p: Number of derivative
-    :param tRange: Time vector
+    :param tSpan: Time vector
     :return: eta for kth bond evaluated in t
     '''
     bondPeriods = int(np.nonzero(Fik)[0][-1])+1
-    tRangeForBond = tRange[:bondPeriods]
+    tRangeForBond = tSpan[:bondPeriods]
     return -np.sum(  np.exp( -Hi(f, F, tRangeForBond) ) * Fik[:bondPeriods] * _outter_integral(F, f, t, p, tRangeForBond) )
