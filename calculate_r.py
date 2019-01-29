@@ -1,7 +1,8 @@
 import numpy as np
 from H_operator import Hi
 
-def rVectorFromf( f, F, tSpan ):
-    rVector=np.exp(-Hi(f,F,tSpan))
+def dVectorFromf( f, F, tSpan ):
+    return np.exp(-Hi(f,F,tSpan))
 
-    return rVector
+def zVectorFromf( f, F, tSpan):
+    return Hi(f,F,tSpan)

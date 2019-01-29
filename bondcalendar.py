@@ -6,8 +6,8 @@ import datetime
 BOND_TICKERS = [
                 'AO20',
                 'AA21',
-                'AY24',
                 'A2E2',
+                'AY24',
                 'AA25',
                 'AA26',
                 'A2E7',

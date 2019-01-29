@@ -7,7 +7,7 @@ from tilde_y import tilde_y
 from calculate_T import getT
 from calculate_M import getM
 from calculate_ksi import ksiFuncs
-from calculate_r import rVectorFromf
+from calculate_r import zVectorFromf
 from phi_basis_functions import getPhiBasisFunctions
 from copy import deepcopy
 import datetime
@@ -26,8 +26,8 @@ N=Fi.shape[0]
 tSpan=np.arange(1,Fi.shape[1]+1)/12.0
 
 x = Symbol('x')
-F=lambdify(x,x**2, "numpy")
-invF=np.vectorize(lambdify(x,x**0.5, "numpy"))
+F=lambdify(x,x, "numpy")
+invF=np.vectorize(lambdify(x,x, "numpy"))
 
 Lambda=0.6
 p=2     #derivative degree used in smoothness equation
@@ -38,14 +38,15 @@ I'm going to use as a (bad) proxy, the yields as the spots.
 """
 r0 = yieldCurve( tSpan )
 
-f0Vector=invF(np.diff(r0 * tSpan) / np.diff(tSpan))
+f0Vector=invF(np.diff(r0) / np.diff(tSpan))
 f0Vector=np.concatenate([[f0Vector[0]], f0Vector])
 f0=UnivariateSpline(np.concatenate([[0],tSpan]), np.concatenate( [[0], f0Vector ]))
 f0Basis = getPhiBasisFunctions(p+1,1)
-r0=rVectorFromf(f0,F,tSpan)
+
+z0 = zVectorFromf(f0,F,tSpan)
 
 steps = 0
-while steps < 4:
+while steps < 3:
     print('Iteration #{}'.format(steps))
     #Idea behind f=f0 is that I want to converge to the final result where previous iteration = current f
     ksi_functions = ksiFuncs( Fi, f0, F, p, tSpan )
@@ -67,8 +68,18 @@ while steps < 4:
     f0 = UnivariateSpline(np.concatenate([[0],tSpan]), np.concatenate( [[0], f0Vector ]))
     steps+=1
 
-rCalculated = rVectorFromf(f0,F,tSpan)
+z0Calculated = zVectorFromf(f0,F,tSpan)
 from matplotlib import pyplot as plt
-plt.plot(tSpan, r0,'b')
-plt.plot(tSpan, rCalculated, 'g')
+plt.plot(tSpan, z0,'b')
+plt.plot(tSpan, z0Calculated, 'g')
 plt.show()
+
+
+
+# from matplotlib import pyplot as plt
+# from matplotlib.pyplot import cm
+# color=iter(cm.rainbow(np.linspace(0,1,len(f0Basis))))
+#
+# for phiFunc in f0Basis:
+#     phi = phiFunc(tSpan)
+#     plt.plot(tSpan, phi, c=next(color))
