@@ -9,6 +9,7 @@ from calculate_M import getM
 from calculate_ksi import ksiFuncs
 from calculate_r import zVectorFromf
 from phi_basis_functions import getPhiBasisFunctions
+from scalar_product import getNormOfFunction
 from copy import deepcopy
 import datetime
 
@@ -26,8 +27,8 @@ N=Fi.shape[0]
 tSpan=np.arange(1,Fi.shape[1]+1)/12.0
 
 x = Symbol('x')
-F=lambdify(x,x, "numpy")
-invF=np.vectorize(lambdify(x,x, "numpy"))
+F=lambdify(x,x**2, "numpy")
+invF=np.vectorize(lambdify(x,x**0.5, "numpy"))
 
 Lambda=0.6
 p=2     #derivative degree used in smoothness equation
@@ -38,7 +39,7 @@ I'm going to use as a (bad) proxy, the yields as the spots.
 """
 r0 = yieldCurve( tSpan )
 
-f0Vector=invF(np.diff(r0) / np.diff(tSpan))
+f0Vector=invF(np.diff(r0*tSpan) / np.diff(tSpan))
 f0Vector=np.concatenate([[f0Vector[0]], f0Vector])
 f0=UnivariateSpline(np.concatenate([[0],tSpan]), np.concatenate( [[0], f0Vector ]))
 f0Basis = getPhiBasisFunctions(p+1,1)
@@ -62,7 +63,7 @@ while steps < 3:
     c=np.squeeze( np.array( invM @( np.eye(len(aux2)) - aux2 ) @y ) )
 
     previous_f = deepcopy( f0 )
-    phiSum = np.sum( [ d[basisIndex]*f0BasisFunc(tSpan) for basisIndex,f0BasisFunc in enumerate(f0Basis) ], axis=0 )
+    phiSum = np.sum( [ d[basisIndex]*f0BasisFunc(tSpan)/getNormOfFunction(f0BasisFunc, tSpan, p) for basisIndex,f0BasisFunc in enumerate(f0Basis) ], axis=0 )
     ksiSum = np.sum( [ c[ksiIndex]*ksiFunc(tSpan) for ksiIndex,ksiFunc in enumerate(ksi_functions) ], axis=0)
     f0Vector = phiSum+ksiSum
     f0 = UnivariateSpline(np.concatenate([[0],tSpan]), np.concatenate( [[0], f0Vector ]))
@@ -81,5 +82,5 @@ plt.show()
 # color=iter(cm.rainbow(np.linspace(0,1,len(f0Basis))))
 #
 # for phiFunc in f0Basis:
-#     phi = phiFunc(tSpan)
+#     phi = phiFunc(tSpan)/getNormOfFunction(phiFunc, tSpan, p)
 #     plt.plot(tSpan, phi, c=next(color))

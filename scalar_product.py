@@ -15,6 +15,10 @@ def diffNtimes(myfunction, N):
         f = lambdify(x, diff(myfunction(x), x), "numpy")
     return f
 
+def getNormOfFunction(function, tSpan, p):
+    funcInTSpan = function(tSpan)
+    return np.sqrt(scalarProduct(funcInTSpan, funcInTSpan, p, tSpan))
+
 
 def scalarProduct(function1,function2,p,tRange):
     firstSum=0

@@ -56,5 +56,5 @@ def eta_k(t, Fik, f, F, p, tSpan):
     :return: eta for kth bond evaluated in t
     '''
     bondPeriods = int(np.nonzero(Fik)[0][-1])+1
-    tRangeForBond = tSpan[:bondPeriods]
+    tRangeForBond = tSpan[1:bondPeriods+1]
     return -np.sum(  np.exp( -Hi(f, F, tRangeForBond) ) * Fik[:bondPeriods] * _outter_integral(F, f, t, p, tRangeForBond) )
