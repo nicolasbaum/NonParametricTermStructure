@@ -12,7 +12,7 @@ function [res dres] = YTM_obj(x,P,F,Tk)
 N = length(x);
 for i=1:N
     d = exp(-Tk.*x(i));
-    res(i) = F(i,:)*d-P(i);
-    dres(i,i) = F(i,:)*(-Tk.*d);
+    res(i) = F'(i,:)*d-P(i);
+    dres(i,i) = F'(i,:)*(-Tk.*d);
 end
 fin = 0;

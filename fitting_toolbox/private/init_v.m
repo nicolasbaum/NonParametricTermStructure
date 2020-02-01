@@ -1,9 +1,9 @@
 function init(T)
 global glob;
 detail = 0;
-%M = dlmread('func.csv',';');
-%time = M(:,1);
-%func = M(:,2);
+M = dlmread('func.csv',';');
+time = M(:,1);
+func = M(:,2);
 % if T >= max(time)
 %     func = func.*max(time)./T;
 %     time = time.*T./max(time);
@@ -15,7 +15,7 @@ detail = 0;
 %     func = func(1:k);
 % end
 
-[~,func,time] = wavefun('sym3',5); 
+%[~,func,time] = wavefun('sym3',5); 
 
 %{
     Let suppose func is t**j/j! for some base t

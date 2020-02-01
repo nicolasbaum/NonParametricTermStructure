@@ -17,9 +17,6 @@ function [d, r, d_span r_span, w] = fitting1(Tk, F, P, Eps, isGML, w, bid, ask, 
 %       d: vector: [1, ntspan] - discount curve points.
 %       r: vector: [1, ntspan] - yield curve points.
 
-
-%Example run: fitting1(T,F,P,0.001,1,[],nan,nan)
-
 global glob;
 tic
 Epsdur = 1;
@@ -51,14 +48,14 @@ end
 
 
 %w = w(dur > Epsdur);
-F=F'
+
 [m, n] = size(F);
-wMat = repmat(w, 1, m);
-F = F.*wMat';
+wMat = repmat(w, 1, n);
+F = F.*wMat;
 P = P.*w;
 %[ytm, dur, mat] = findYTM(F', P, Tk');
 
-if (size(Tk, 1) ~= 1) || (size(Tk, 2) ~= m) || (size(P, 1) ~= n) || (size(P, 2) ~= 1)
+if (size(Tk, 1) ~= 1) || (size(Tk, 2) ~= n) || (size(P, 1) ~= n) || (size(P, 2) ~= 1)
     error('Wrong input');
 end
 init_v(max(Tk));
@@ -85,8 +82,7 @@ end
 r0 como interpolacion lineal de la curva de zero-coupon
 para t= valores de vector tspan
 %}
-%%%%%%%%%%%%%%%%%%%TEMPORARIAMENTE COMENTADO%%%%%%%%%%%%%%%%%%%
-%r0 = interp1(Tk,cur_curve,tspan,'linear','extrap')
+r0 = interp1(Tk,cur_curve,tspan,'linear','extrap')
 
 %{
 g0=f0 va a ser aquella funcion tal que 
