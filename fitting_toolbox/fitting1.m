@@ -20,7 +20,7 @@ function [d, r, d_span r_span, w] = fitting1(Tk, F, P, Eps, isGML, w, bid, ask, 
 
 %{
 Example run:
-P=ones(17,1)*100.0
+P=ones(17,1)*100.0;
 fitting1(T,F,P,0.001,1,[],nan,nan)
 %}
 
@@ -55,7 +55,7 @@ end
 
 
 %w = w(dur > Epsdur);
-F=F'
+F=F';
 [m, n] = size(F);
 wMat = repmat(w, 1, m);
 F = F.*wMat';
