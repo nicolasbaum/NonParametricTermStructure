@@ -17,6 +17,6 @@ def getT(p, Fi, f0, F, tSpan):
     result=np.zeros((len(Fi),p))
     for indexFi, Fik in enumerate(Fi):
         bondPeriods = int(np.nonzero(Fik)[0][-1]) + 1
-        tRangeForBond = tSpan[1:bondPeriods+1]
+        tRangeForBond = tSpan[:bondPeriods]
         result[indexFi,:]=_T_k(p, Fik[:bondPeriods], f0, F, tRangeForBond)
     return result

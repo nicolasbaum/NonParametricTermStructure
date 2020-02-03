@@ -18,7 +18,11 @@ function [d, r, d_span r_span, w] = fitting1(Tk, F, P, Eps, isGML, w, bid, ask, 
 %       r: vector: [1, ntspan] - yield curve points.
 
 
-%Example run: fitting1(T,F,P,0.001,1,[],nan,nan)
+%{
+Example run:
+P=ones(17,1)*100.0
+fitting1(T,F,P,0.001,1,[],nan,nan)
+%}
 
 global glob;
 tic

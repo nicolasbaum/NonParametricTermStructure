@@ -1,16 +1,16 @@
 import numpy as np
 from functools import lru_cache
-from numba import jit
 from sympy import Symbol, diff
 from sympy.utilities import lambdify
 from scipy.interpolate import UnivariateSpline
-from optimization import optCumTrapz, range_memoize
+from scipy.integrate import cumtrapz
+from optimization import range_memoize
 from H_operator import Hi
 
 N_POINTS = 1000
 
 @lru_cache(maxsize=None)
-@jit
+#@jit
 def _inner_integral(t, tau, p):
     integral_range=min([t,tau])
     u=np.linspace(0,integral_range,N_POINTS)    #ToDo: Validate this...
@@ -43,7 +43,7 @@ def _outter_integral(F,f,t,p,tRangeForBond):
     x = Symbol('x')
     diffedF = _sthDerivativeOff(1,F)
     inner_sum = np.vectorize( lambda tau: _inner_sum(tau,t,p) )
-    return optCumTrapz(_evaluateFunction(diffedF,f(tRangeForBond))*inner_sum(tRangeForBond),tRangeForBond, initial=0)
+    return cumtrapz(_evaluateFunction(diffedF,f(tRangeForBond))*inner_sum(tRangeForBond),tRangeForBond, initial=0)
 
 def eta_k(t, Fik, f, F, p, tSpan):
     '''
@@ -56,5 +56,9 @@ def eta_k(t, Fik, f, F, p, tSpan):
     :return: eta for kth bond evaluated in t
     '''
     bondPeriods = int(np.nonzero(Fik)[0][-1])+1
-    tRangeForBond = tSpan[1:bondPeriods+1]
-    return -np.sum(  np.exp( -Hi(f, F, tRangeForBond) ) * Fik[:bondPeriods] * _outter_integral(F, f, t, p, tRangeForBond) )
+    tRangeForBond = tSpan[:bondPeriods]
+
+    discountedCasflows=np.exp( -Hi(f, F, tRangeForBond) )
+    outterIntegral=_outter_integral(F, f, t, p, tRangeForBond)
+
+    return -np.sum( discountedCasflows  * Fik[:bondPeriods] * outterIntegral )
