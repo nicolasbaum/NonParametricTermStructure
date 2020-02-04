@@ -7,6 +7,7 @@ class YTMCalculator(object):
         self.calcDate = calcDate or datetime.date.today()
         self.daysInMonth = monthConvention or 30
         self.daysInYear = yearConvention or 360
+        self.ytms=None
 
     def calculate( self, paymentsDict, price):
         def f(ytm):
@@ -18,9 +19,18 @@ class YTMCalculator(object):
         for date, payment in paymentsDict.items():
             if date<self.calcDate:
                 continue
-            days = self.daysToDate( self.calcDate, date )
-            result += payment*np.exp(-ytm*days/self.daysInYear)
+            yearsToDate = self.daysToDate( self.calcDate, date )/self.daysInYear
+            result += payment*np.exp(-ytm*yearsToDate)
         return result
+
+    def macaulayDuration(self, paymentsDict, ytm, bondPrice):
+        result = 0
+        for date, payment in paymentsDict.items():
+            if date<self.calcDate:
+                continue
+            yearsToDate = self.daysToDate( self.calcDate, date )/self.daysInYear
+            result += payment*yearsToDate*np.exp(-ytm*yearsToDate)
+        return result/bondPrice
 
     @classmethod
     def daysToDate(cls, startDate, endDate):
@@ -30,13 +40,24 @@ class YTMCalculator(object):
         days = self.daysToDate(self.calcDate,date)
         return days/self.daysInYear
 
+    def getDurationsYTMsAndMaturities(self, bondCalendars, bondPrices):
+        maturitiesInYears = []
+        durationsInYears = []
+        yields = []
+
+        for i, calendar in enumerate(bondCalendars):
+            maturitiesInYears.append(self.dateToYears(calendar.dates[-1]))
+            bondPrice = bondPrices.loc[calendar.bondName].Price
+            ytm = self.calculate(calendar.paymentsDict, bondPrice)
+            durationsInYears.append(self.macaulayDuration(calendar.paymentsDict, ytm, bondPrice))
+            yields.append(ytm)
+
+        return tuple([np.array(x) for x in (durationsInYears, yields, maturitiesInYears)]) #Cast to numpy arrays so no need to cast in the future
+
     def getInterpolatedYieldCurve(self, bondCalendars, bondPrices):
         """Returned variable is an interpolated object"""
-        maturitiesInYears = [0]
-        yields = [0]
-        for i,calendar in enumerate(bondCalendars):
-            maturitiesInYears.append(self.dateToYears( calendar.dates[-1]) )
-            yields.append( self.calculate(calendar.paymentsDict,
-                                          bondPrices[bondPrices['Bond'] == calendar.bondName].Price.values[0]) )
+        _, yields, maturitiesInYears = self.getDurationsYTMsAndMaturities(bondCalendars, bondPrices)
+        maturitiesInYears = [0] + maturitiesInYears
+        yields = [0] + yields
 
         return interpolate.interp1d( maturitiesInYears, yields, bounds_error=False, fill_value='extrapolate',kind='cubic' )

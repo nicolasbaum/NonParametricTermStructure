@@ -23,6 +23,12 @@ Fi = cl.getPaymentMatrix()
 ytmCalc = YTMCalculator( calcDate=datetime.date(2018,9,12), yearConvention=252.0 )
 yieldCurve = ytmCalc.getInterpolatedYieldCurve(cl.calendars, bondPrices)
 
+macaulyDurations,_,_ = ytmCalc.getDurationsYTMsAndMaturities(cl.calendars, bondPrices)
+scaleFactors = 1/macaulyDurations
+for i,sf in enumerate(scaleFactors):
+    P[i]*=sf
+    Fi[i,:]*=sf
+
 N=Fi.shape[0]
 tSpan=np.arange(1,Fi.shape[1]+1)/12.0
 
