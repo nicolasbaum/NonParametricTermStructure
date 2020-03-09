@@ -11,6 +11,8 @@ def ksi_k(Fik, f, F, p, tSpan):
 
     eta_kVectorized = np.vectorize(lambda x: eta_k(x, Fik, f, F, p, tSpan))
     eta_kEvaluatedInTSpan = eta_kVectorized(tSpan)
+    #from matplotlib import pyplot as plt
+    #plt.plot(tSpan,eta_kEvaluatedInTSpan)
     ksi_kEvaluatedInTSpan = eta_kEvaluatedInTSpan.copy()
     # Subtracting projection of eta_k in each phiFunc to get projection of eta_k in W1
     for phiIndex, phiFunc in enumerate(phiBasisFunctions):
@@ -24,4 +26,10 @@ def ksi_k(Fik, f, F, p, tSpan):
 
 def ksiFuncs(Fi, f, F, p, tSpan):
     # p = Degree of derivative used in the smoothness equation
-    return [ksi_k(Fik, f, F, p, tSpan) for Fik in Fi]
+
+    #COMMENTED LINES FOR DEBUG
+    #from matplotlib import pyplot as plt
+    #plt.figure()
+    a= [ksi_k(Fik, f, F, p, tSpan) for Fik in Fi]
+    #plt.draw()
+    return a

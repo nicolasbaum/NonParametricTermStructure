@@ -14,7 +14,7 @@ N_POINTS = 1000
 def _inner_integral(t, tau, p):
     integral_range=min([t,tau])
     u=np.linspace(0,integral_range,N_POINTS)    #ToDo: Validate this...
-    return np.trapz( np.power((t-u)*(tau-u),p-1)/(np.math.factorial((p-1))**2),u)
+    return np.trapz( np.power((t-u)*(tau-u),p-1),u)/(np.math.factorial((p-1))**2)
 
 def _sthDerivativeOff(s,f):
     x = Symbol('x')
@@ -25,10 +25,9 @@ def _sthDerivativeOff(s,f):
             f = diff(f(x), x)
     return f
 
-def _inner_sum(tau, t, p):
+def _inner_sum(t, tau, p):
     x = Symbol('x')
     inner_sum = np.sum([((t*tau) ** s) / (np.math.factorial(s))**2 for s in range(p)])
-    inner_sum + _inner_integral(t, tau, p)
     return inner_sum
 
 def _evaluateFunction(f,points):
@@ -38,12 +37,12 @@ def _evaluateFunction(f,points):
         return fv(np.array(points))
     return f(points)
 
-@range_memoize(4)
+#@range_memoize(4)
 def _outter_integral(F,f,t,p,tRangeForBond):
     x = Symbol('x')
     diffedF = _sthDerivativeOff(1,F)
-    inner_sum = np.vectorize( lambda tau: _inner_sum(tau,t,p) )
-    return cumtrapz(_evaluateFunction(diffedF,f(tRangeForBond))*inner_sum(tRangeForBond),tRangeForBond, initial=0)
+    inner_term = np.vectorize( lambda tau: _inner_sum(t, tau, p)+_inner_integral(t, tau, p) )
+    return cumtrapz(_evaluateFunction(diffedF,f(tRangeForBond))*inner_term(tRangeForBond),tRangeForBond, initial=0)
 
 def eta_k(t, Fik, f, F, p, tSpan):
     '''

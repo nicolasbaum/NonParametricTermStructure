@@ -4,18 +4,22 @@ detail = 0;
 M = dlmread('func.csv',';');
 time = M(:,1);
 func = M(:,2);
-% if T >= max(time)
+
+%[~,func,time] = wavefun('sym3',7);
+%func=func';
+%time=time';
+
+
+%if T >= max(time)
 %     func = func.*max(time)./T;
 %     time = time.*T./max(time);
 %     %time = [time; (linspace(time(end) + 1e-5, T, 500))'];
 %     %func = [func; (func(end).*ones(500, 1))];
-% else
+%else
 %     k = find(time > T, 1, 'first');
 %     time = time(1:k);
 %     func = func(1:k);
-% end
-
-%[~,func,time] = wavefun('sym3',5); 
+%end
 
 %{
     Let suppose func is t**j/j! for some base t

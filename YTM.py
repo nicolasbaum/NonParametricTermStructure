@@ -60,4 +60,4 @@ class YTMCalculator(object):
         maturitiesInYears = [0] + maturitiesInYears
         yields = [0] + yields
 
-        return interpolate.interp1d( maturitiesInYears, yields, bounds_error=False, fill_value='extrapolate',kind='cubic' )
+        return interpolate.interp1d( maturitiesInYears, yields, bounds_error=False, fill_value='extrapolate',kind='linear' )

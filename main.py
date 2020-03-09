@@ -1,6 +1,6 @@
 import numpy as np
 from sympy import Symbol, lambdify
-from scipy.interpolate import UnivariateSpline
+from scipy.interpolate import UnivariateSpline, interp1d
 from bondcalendar import BondCalendarLoader
 from YTM import YTMCalculator
 from tilde_y import tilde_y
@@ -44,10 +44,7 @@ and this isn't easy because settlement dates are not overlapping,
 I'm going to use as a (bad) proxy, the yields as the spots.
 """
 r0 = yieldCurve( tSpan )
-
-f0Vector=invF(np.diff(r0*tSpan) / np.diff(tSpan))
-f0Vector=np.concatenate([[f0Vector[0]], f0Vector])
-f0=UnivariateSpline(np.concatenate([[0],tSpan]), np.concatenate( [[0], f0Vector ]))
+f0=interp1d(tSpan,np.nan_to_num(invF(r0)),fill_value='extrapolate')
 f0Basis = getPhiBasisFunctions(p+1,1)
 
 z0 = zVectorFromf(f0,F,tSpan)
