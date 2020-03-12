@@ -31,12 +31,17 @@ class range_memoize:
         def wrapped_f(*args):
             fArgs = args[:self.rangeArgumentPosition]+args[self.rangeArgumentPosition+1:]
             rangeArg = args[self.rangeArgumentPosition]
-            if fArgs in self.memo:
+            hashableVersionOffArgs=tuple()
+            for arg in fArgs:
+                x=arg.tobytes() if hasattr(arg,'tobytes') else arg
+                hashableVersionOffArgs+=(x,)
+
+            if hashableVersionOffArgs in self.memo:
                 length = len(rangeArg)
-                if length <= len(self.memo[fArgs][0]):
-                    return self.memo[fArgs][1][:length]
+                if length <= len(self.memo[hashableVersionOffArgs][0]):
+                    return self.memo[hashableVersionOffArgs][1][:length]
             result = f(*args)
-            self.memo[fArgs]=( rangeArg, result )
+            self.memo[hashableVersionOffArgs]=( rangeArg, result )
             return result
         return wrapped_f
 
