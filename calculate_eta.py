@@ -3,7 +3,7 @@ from functools import lru_cache,partial
 from sympy import Symbol, diff
 from sympy.utilities import lambdify
 from scipy.interpolate import UnivariateSpline
-from scipy.integrate import cumtrapz,solve_bvp
+from scipy.integrate import cumtrapz,solve_bvp,solve_ivp
 from optimization import range_memoize
 from H_operator import Hi
 
@@ -37,7 +37,7 @@ def _onlyPositiveSegmentForFunction(func,x):
     return np.clip(result,0,None)
 
 
-############################BVP4C APPROACH############################
+############################IVP APPROACH############################
 
 def _pDerivativeOfEtaK(t, Fik, f, F, p, tSpan):
     bondPeriods, tRangeForBond = _bondPeriodsAndTRangeForBond(Fik, tSpan)
@@ -62,34 +62,23 @@ def _getODEfun(Fik, f, F, p, tSpan):
     def odefun(func,x,y):
         result=np.zeros(y.shape)
         for i in range(y.shape[0]-1):
-            result[i,:]=y[i+1]
-        result[-1,:]=[func(xi) for xi in x]
+            result[i]=y[i+1]
+        result[-1]=func(x)
         return result
     return partial(odefun,func)
 
-def _getBCfun(Fik, f, F, p, tSpan):
+def _getY0(Fik, f, F, p, tSpan):
     func = lambda s: _sDerivativeOfEtaKIn0(Fik, f, F, s, tSpan)
-    def bcfun(func,ya,yb):
-        result=[ya[i]-func(i) for i in range(ya.shape[0])]
-        return result
-    return partial(bcfun,func)
+    return [func(s) for s in range(p)]
 
-def _initialGuess(p,tSpan):
-    indexes = list(range(p-1))
-    funcs=[]
-    sin=np.sin(tSpan)
-    cos=np.cos(tSpan)
-    for i in indexes:
-        funcs.append(sin if i%2 else cos)
-    return np.vstack(funcs)
-
-#@range_memoize(4)
 def _eta_k(Fik, f, F, p, tSpan):
-    result=solve_bvp(_getODEfun(Fik,f,F,p,tSpan),_getBCfun(Fik,f,F,p,tSpan),tSpan,_initialGuess(p,tSpan))
-    return result.sol
+    result=solve_ivp(_getODEfun(Fik,f,F,p,tSpan),(tSpan[0],tSpan[-1]),_getY0(Fik, f, F, p, tSpan),dense_output=True)
+    return (result.t,result.y[0])
 
 def eta_k(Fik, f, F, p, tSpan):
-    return _eta_k(Fik, f, F, p, tSpan)
+    x,y=_eta_k(Fik, f, F, p, tSpan)
+    return UnivariateSpline(x,y)
+
 ############################INTEGRAL APPROACH############################
 
 def _inner_sum(t, tau, p):

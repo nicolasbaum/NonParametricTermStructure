@@ -9,8 +9,8 @@ def ksi_k(Fik, f, F, p, tSpan):
     phiBasisFunctions = getPhiBasisFunctions(p)  # phiFunctions are a basis of W0
     W0coefficients = np.zeros(p)
 
-    eta_kVectorized = eta_k(Fik, f, F, p, tSpan) #np.vectorize(lambda x: eta_k(x, Fik, f, F, p, tSpan))
-    eta_kEvaluatedInTSpan = eta_kVectorized(tSpan).flatten()
+    eta_kVectorized = eta_k(Fik, f, F, p, tSpan)
+    eta_kEvaluatedInTSpan = eta_kVectorized(tSpan)
     from matplotlib import pyplot as plt
     plt.plot(tSpan,eta_kEvaluatedInTSpan)
     ksi_kEvaluatedInTSpan = eta_kEvaluatedInTSpan.copy()
