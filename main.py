@@ -1,6 +1,6 @@
 import numpy as np
 from sympy import Symbol, lambdify
-from scipy.interpolate import UnivariateSpline, interp1d
+from scipy.interpolate import UnivariateSpline
 from bondcalendar import BondCalendarLoader
 from YTM import YTMCalculator
 from tilde_y import tilde_y
@@ -18,7 +18,7 @@ bcl = BondCalendarLoader('calendars.xlsx')
 cl = bcl.getCalendarList()
 bondPrices = bcl.getBondPrices()
 P = bondPrices['Price'].values
-Fi = cl.getPaymentMatrix()
+Fi,warpedTSpanInYears = cl.getPaymentMatrixAndWarpedTimeSpanInYears()
 
 ytmCalc = YTMCalculator( calcDate=datetime.date(2018,9,12), yearConvention=252.0 )
 yieldCurve = ytmCalc.getInterpolatedYieldCurve(cl.calendars, bondPrices)
@@ -30,7 +30,7 @@ for i,sf in enumerate(scaleFactors):
     Fi[i,:]*=sf
 
 N=Fi.shape[0]
-tSpan=np.arange(1,Fi.shape[1]+1)/12.0
+#tSpan=np.arange(1,Fi.shape[1]+1)/12.0
 
 x = Symbol('x')
 F=lambdify(x,x**2, "numpy")
@@ -43,8 +43,8 @@ p=2     #derivative degree used in smoothness equation
 and this isn't easy because settlement dates are not overlapping,
 I'm going to use as a (bad) proxy, the yields as the spots.
 """
-r0 = yieldCurve( tSpan )
-f0=interp1d(tSpan,np.nan_to_num(invF(r0)),fill_value='extrapolate')
+r0 = yieldCurve( warpedTSpanInYears )
+f0=UnivariateSpline(np.concatenate([[0],tSpan]), np.concatenate( [[0], np.nan_to_num(invF(r0)) ]))
 f0Basis = getPhiBasisFunctions(p+1,1)
 
 z0 = zVectorFromf(f0,F,tSpan)

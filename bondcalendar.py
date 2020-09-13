@@ -59,17 +59,19 @@ class ListOfCalendars(object):
             for date in calendar.dates:
                 self.payments[date]+=calendar.paymentsDict[date]
 
-    def getPaymentMatrix(self):
+    def getPaymentMatrixAndWarpedTimeSpanInYears(self,maxSamples=300):
         minDate = min([min(calendar.dates) for calendar in self.calendars]+[np.datetime64(datetime.date.today(),'D')])
         maxDate = max([max(calendar.dates) for calendar in self.calendars])
-        dates = pd.date_range(start=pd.to_datetime(minDate).replace(day=1), end=pd.to_datetime(maxDate).replace(day=1), freq='MS')
-        pmtMatrix = np.empty((len(self.calendars),len(dates)))
+        daysDifference=(maxDate-minDate)/np.timedelta64(1,'D')
+        warpedTspanInDays=np.geomspace(start=1,stop=daysDifference+10,num=maxSamples)
+
+        pmtMatrix = np.zeros((len(self.calendars),len(warpedTspanInDays)))
         for i,calendar in enumerate(sorted(self.calendars)):
-            for j,date in enumerate(dates):
-                paymentsDict = { pd.to_datetime(k).replace(day=1) : v for k,v in calendar.paymentsDict.items() }
-                calendarDates = [ pd.to_datetime(d).replace(day=1) for d in calendar.dates ]
-                pmtMatrix[i,j] = paymentsDict[date] if date in calendarDates else 0
-        return pmtMatrix
+            for date,payment in calendar.paymentsDict.items():
+                numberOfDays=(pd.to_datetime(date) - minDate) / np.timedelta64(1, 'D')
+                j=np.searchsorted(warpedTspanInDays,numberOfDays)
+                pmtMatrix[i,j] += payment
+        return (pmtMatrix,warpedTspanInDays/365.25)
 
 class BondCalendarLoader(object):
     def __init__(self, xlsPath):

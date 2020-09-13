@@ -20,7 +20,7 @@ function [d, r, d_span r_span, w] = fitting1(Tk, F, P, Eps, isGML, w, bid, ask, 
 
 %{
 Example run:
-P=ones(17,1)*100.0;
+P=ones(17,1)*100-F(:,1);
 fitting1(T,F,P,0.001,1,[],nan,nan);
 %}
 
@@ -99,7 +99,7 @@ Como indica ecuacion (3) del paper
 %}
 g0 = sqrt(diff(r0.*tspan)./diff(tspan))
 %{
-Asquerosamente repite el primer elemento de la derivada para que
+Repite el primer elemento de la derivada para que
 tengan igual cantidad de elementos que la funcion buscada
 %}
 g0 = [g0(1), g0]';
