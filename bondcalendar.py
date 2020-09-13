@@ -59,19 +59,28 @@ class ListOfCalendars(object):
             for date in calendar.dates:
                 self.payments[date]+=calendar.paymentsDict[date]
 
-    def getPaymentMatrixAndWarpedTimeSpanInYears(self,maxSamples=300):
+    def getPaymentMatrixAndWarpedTimeSpanInYears(self):
         minDate = min([min(calendar.dates) for calendar in self.calendars]+[np.datetime64(datetime.date.today(),'D')])
         maxDate = max([max(calendar.dates) for calendar in self.calendars])
-        daysDifference=(maxDate-minDate)/np.timedelta64(1,'D')
-        warpedTspanInDays=np.geomspace(start=1,stop=daysDifference+10,num=maxSamples)
+        daysDifference=self.timedelta64ToDays(minDate,maxDate)
+        #I don't want the max gap in time between warpedTspan elements to be more than 0.5*Year to avoid summing up more than 1 payment
+        maxSamples=self.calculateMinimumNumberOfSamplesRequiredForMaxStepInDays(minDate,maxDate,0.4*365.25)
+        warpedTspanInDays=np.geomspace(start=1,stop=daysDifference,num=maxSamples)
 
         pmtMatrix = np.zeros((len(self.calendars),len(warpedTspanInDays)))
         for i,calendar in enumerate(sorted(self.calendars)):
             for date,payment in calendar.paymentsDict.items():
-                numberOfDays=(pd.to_datetime(date) - minDate) / np.timedelta64(1, 'D')
+                numberOfDays=self.timedelta64ToDays(minDate,pd.to_datetime(date))
                 j=np.searchsorted(warpedTspanInDays,numberOfDays)
                 pmtMatrix[i,j] += payment
         return (pmtMatrix,warpedTspanInDays/365.25)
+
+    def timedelta64ToDays(self,start,end):
+        return (end-start)/np.timedelta64(1,'D')
+
+    def calculateMinimumNumberOfSamplesRequiredForMaxStepInDays(self,startDate,endDate,maxStepInDays):
+        daysDifference = self.timedelta64ToDays(startDate, endDate)-1
+        return np.ceil(1-np.log(daysDifference)/np.log(1-maxStepInDays/(daysDifference-1)))
 
 class BondCalendarLoader(object):
     def __init__(self, xlsPath):

@@ -20,7 +20,7 @@ bondPrices = bcl.getBondPrices()
 P = bondPrices['Price'].values
 Fi,warpedTSpanInYears = cl.getPaymentMatrixAndWarpedTimeSpanInYears()
 
-ytmCalc = YTMCalculator( calcDate=datetime.date(2018,9,12), yearConvention=252.0 )
+ytmCalc = YTMCalculator( calcDate=datetime.date(2018,9,12), yearConvention=365.25 )
 yieldCurve = ytmCalc.getInterpolatedYieldCurve(cl.calendars, bondPrices)
 
 macaulyDurations,_,_ = ytmCalc.getDurationsYTMsAndMaturities(cl.calendars, bondPrices)
@@ -44,19 +44,19 @@ and this isn't easy because settlement dates are not overlapping,
 I'm going to use as a (bad) proxy, the yields as the spots.
 """
 r0 = yieldCurve( warpedTSpanInYears )
-f0=UnivariateSpline(np.concatenate([[0],tSpan]), np.concatenate( [[0], np.nan_to_num(invF(r0)) ]))
+f0=UnivariateSpline(np.concatenate([[0],warpedTSpanInYears]), np.concatenate( [[0], np.nan_to_num(invF(r0)) ]))
 f0Basis = getPhiBasisFunctions(p+1,1)
 
-z0 = zVectorFromf(f0,F,tSpan)
+z0 = zVectorFromf(f0,F,warpedTSpanInYears)
 
 steps = 0
 while steps < 3:
     print('Iteration #{}'.format(steps))
     #Idea behind f=f0 is that I want to converge to the final result where previous iteration = current f
-    ksi_functions = ksiFuncs( Fi, f0, F, p, tSpan )
-    M = getM(Lambda,Fi,ksi_functions,p,tSpan)
-    T = getT(p, Fi, f0, F, tSpan)
-    y= tilde_y(P, Fi, f0, tSpan,F)
+    ksi_functions = ksiFuncs( Fi, f0, F, p, warpedTSpanInYears )
+    M = getM(Lambda,Fi,ksi_functions,p,warpedTSpanInYears)
+    T = getT(p, Fi, f0, F, warpedTSpanInYears)
+    y= tilde_y(P, Fi, f0, warpedTSpanInYears,F)
 
     #Check original idea that uses QR decomposition
     invM = np.linalg.inv(np.asmatrix(M))
@@ -66,16 +66,16 @@ while steps < 3:
     c=np.squeeze( np.array( invM @( np.eye(len(aux2)) - aux2 ) @y ) )
 
     previous_f = deepcopy( f0 )
-    phiSum = np.sum( [ d[basisIndex]*f0BasisFunc(tSpan)/getNormOfFunction(f0BasisFunc, tSpan, p) for basisIndex,f0BasisFunc in enumerate(f0Basis) ], axis=0 )
-    ksiSum = np.sum( [ c[ksiIndex]*ksiFunc(tSpan) for ksiIndex,ksiFunc in enumerate(ksi_functions) ], axis=0)
+    phiSum = np.sum( [ d[basisIndex]*f0BasisFunc(warpedTSpanInYears)/getNormOfFunction(f0BasisFunc, warpedTSpanInYears, p) for basisIndex,f0BasisFunc in enumerate(f0Basis) ], axis=0 )
+    ksiSum = np.sum( [ c[ksiIndex]*ksiFunc(warpedTSpanInYears) for ksiIndex,ksiFunc in enumerate(ksi_functions) ], axis=0)
     f0Vector = phiSum+ksiSum
-    f0 = UnivariateSpline(np.concatenate([[0],tSpan]), np.concatenate( [[0], f0Vector ]))
+    f0 = UnivariateSpline(np.concatenate([[0],warpedTSpanInYears]), np.concatenate( [[0], f0Vector ]))
     steps+=1
 
-z0Calculated = zVectorFromf(f0,F,tSpan)
+z0Calculated = zVectorFromf(f0,F,warpedTSpanInYears)
 from matplotlib import pyplot as plt
-plt.plot(tSpan, z0,'b')
-plt.plot(tSpan, z0Calculated, 'g')
+plt.plot(warpedTSpanInYears, z0,'b')
+plt.plot(warpedTSpanInYears, z0Calculated, 'g')
 plt.show()
 
 
