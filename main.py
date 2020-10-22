@@ -1,6 +1,6 @@
 import numpy as np
 from sympy import Symbol, lambdify
-from scipy.interpolate import UnivariateSpline, interp1d
+from scipy.interpolate import InterpolatedUnivariateSpline
 from bondcalendar import BondCalendarLoader
 from YTM import YTMCalculator
 from tilde_y import tilde_y
@@ -20,7 +20,7 @@ bondPrices = bcl.getBondPrices()
 P = bondPrices['Price'].values
 Fi = cl.getPaymentMatrix()
 
-ytmCalc = YTMCalculator( calcDate=datetime.date(2018,9,12), yearConvention=252.0 )
+ytmCalc = YTMCalculator( calcDate=datetime.date(2018,9,12), yearConvention=365.25 )
 yieldCurve = ytmCalc.getInterpolatedYieldCurve(cl.calendars, bondPrices)
 
 macaulyDurations,_,_ = ytmCalc.getDurationsYTMsAndMaturities(cl.calendars, bondPrices)
@@ -44,7 +44,7 @@ and this isn't easy because settlement dates are not overlapping,
 I'm going to use as a (bad) proxy, the yields as the spots.
 """
 r0 = yieldCurve( tSpan )
-f0=interp1d(tSpan,np.nan_to_num(invF(r0)),fill_value='extrapolate')
+f0=InterpolatedUnivariateSpline(tSpan,np.nan_to_num(invF(r0)),k=1)
 f0Basis = getPhiBasisFunctions(p+1,1)
 
 z0 = zVectorFromf(f0,F,tSpan)
@@ -69,7 +69,7 @@ while steps < 3:
     phiSum = np.sum( [ d[basisIndex]*f0BasisFunc(tSpan)/getNormOfFunction(f0BasisFunc, tSpan, p) for basisIndex,f0BasisFunc in enumerate(f0Basis) ], axis=0 )
     ksiSum = np.sum( [ c[ksiIndex]*ksiFunc(tSpan) for ksiIndex,ksiFunc in enumerate(ksi_functions) ], axis=0)
     f0Vector = phiSum+ksiSum
-    f0 = UnivariateSpline(np.concatenate([[0],tSpan]), np.concatenate( [[0], f0Vector ]))
+    f0 = InterpolatedUnivariateSpline(np.concatenate([[0],tSpan]), np.concatenate( [[0], f0Vector ]))
     steps+=1
 
 z0Calculated = zVectorFromf(f0,F,tSpan)

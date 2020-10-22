@@ -1,9 +1,9 @@
 import numpy as np
-from functools import lru_cache,partial
+from functools import lru_cache
 from sympy import Symbol, diff
 from sympy.utilities import lambdify
 from scipy.interpolate import UnivariateSpline
-from scipy.integrate import cumtrapz,solve_bvp,solve_ivp
+from scipy.integrate import cumtrapz
 from optimization import range_memoize
 from H_operator import Hi
 
@@ -39,45 +39,45 @@ def _onlyPositiveSegmentForFunction(func,x):
 
 ############################IVP APPROACH############################
 
-def _pDerivativeOfEtaK(t, Fik, f, F, p, tSpan):
-    bondPeriods, tRangeForBond = _bondPeriodsAndTRangeForBond(Fik, tSpan)
-    discountFactors = _discountFactors(f, F, tRangeForBond)
-    diffedF = _evaluateFunction(_sthDerivativeOff(1, F), f(tRangeForBond))
-    integralFunc=np.power(_onlyPositiveSegmentForFunction(lambda u:(t-u),tRangeForBond),(p-1))/np.math.factorial(p-1)
-    integral=cumtrapz( diffedF * integralFunc, tRangeForBond, initial=0)
+# def _pDerivativeOfEtaK(t, Fik, f, F, p, tSpan):
+#     bondPeriods, tRangeForBond = _bondPeriodsAndTRangeForBond(Fik, tSpan)
+#     discountFactors = _discountFactors(f, F, tRangeForBond)
+#     diffedF = _evaluateFunction(_sthDerivativeOff(1, F), f(tRangeForBond))
+#     integralFunc=np.power(_onlyPositiveSegmentForFunction(lambda u:(t-u),tRangeForBond),(p-1))/np.math.factorial(p-1)
+#     integral=cumtrapz( diffedF * integralFunc, tRangeForBond, initial=0)
+#
+#     return -np.sum(discountFactors * Fik[:bondPeriods] * integral)
 
-    return -np.sum(discountFactors * Fik[:bondPeriods] * integral)
+# def _sDerivativeOfEtaKIn0(Fik, f, F, s, tSpan):
+#     bondPeriods, tRangeForBond = _bondPeriodsAndTRangeForBond(Fik, tSpan)
+#     discountFactors = _discountFactors(f, F, tRangeForBond)
+#     diffedF = _evaluateFunction(_sthDerivativeOff(1, F), f(tRangeForBond))
+#     integralFunc = np.power(tRangeForBond,s)/ np.math.factorial(s)
+#     integral = cumtrapz(diffedF * integralFunc, tRangeForBond, initial=0)
+#
+#     return np.sum(discountFactors * Fik[:bondPeriods] * integral)
 
-def _sDerivativeOfEtaKIn0(Fik, f, F, s, tSpan):
-    bondPeriods, tRangeForBond = _bondPeriodsAndTRangeForBond(Fik, tSpan)
-    discountFactors = _discountFactors(f, F, tRangeForBond)
-    diffedF = _evaluateFunction(_sthDerivativeOff(1, F), f(tRangeForBond))
-    integralFunc = np.power(tRangeForBond,s)/ np.math.factorial(s)
-    integral = cumtrapz(diffedF * integralFunc, tRangeForBond, initial=0)
+# def _getODEfun(Fik, f, F, p, tSpan):
+#     func = lambda t:_pDerivativeOfEtaK(t,Fik,f,F,p,tSpan)
+#     def odefun(func,x,y):
+#         result=np.zeros(y.shape)
+#         for i in range(y.shape[0]-1):
+#             result[i]=y[i+1]
+#         result[-1]=func(x)
+#         return result
+#     return partial(odefun,func)
 
-    return np.sum(discountFactors * Fik[:bondPeriods] * integral)
+# def _getY0(Fik, f, F, p, tSpan):
+#     func = lambda s: _sDerivativeOfEtaKIn0(Fik, f, F, s, tSpan)
+#     return [func(s) for s in range(p)]
 
-def _getODEfun(Fik, f, F, p, tSpan):
-    func = lambda t:_pDerivativeOfEtaK(t,Fik,f,F,p,tSpan)
-    def odefun(func,x,y):
-        result=np.zeros(y.shape)
-        for i in range(y.shape[0]-1):
-            result[i]=y[i+1]
-        result[-1]=func(x)
-        return result
-    return partial(odefun,func)
+# def _eta_k(Fik, f, F, p, tSpan):
+#     result=solve_ivp(_getODEfun(Fik,f,F,p,tSpan),(tSpan[0],tSpan[-1]),_getY0(Fik, f, F, p, tSpan),dense_output=True)
+#     return (result.t,result.y[0])
 
-def _getY0(Fik, f, F, p, tSpan):
-    func = lambda s: _sDerivativeOfEtaKIn0(Fik, f, F, s, tSpan)
-    return [func(s) for s in range(p)]
-
-def _eta_k(Fik, f, F, p, tSpan):
-    result=solve_ivp(_getODEfun(Fik,f,F,p,tSpan),(tSpan[0],tSpan[-1]),_getY0(Fik, f, F, p, tSpan),dense_output=True)
-    return (result.t,result.y[0])
-
-def eta_k(Fik, f, F, p, tSpan):
-    x,y=_eta_k(Fik, f, F, p, tSpan)
-    return UnivariateSpline(x,y)
+# def eta_k(Fik, f, F, p, tSpan):
+#     x,y=_eta_k(Fik, f, F, p, tSpan)
+#     return UnivariateSpline(x,y)
 
 ############################INTEGRAL APPROACH############################
 
@@ -97,18 +97,17 @@ def _outter_integral(F,f,t,p,tRangeForBond):
     inner_term = np.vectorize( lambda tau: _inner_sum(t, tau, p)+_inner_integral(t,tau,p,tRangeForBond[-1]) )
     return cumtrapz(_evaluateFunction(diffedF,f(tRangeForBond))*inner_term(tRangeForBond),tRangeForBond, initial=0)
 
-# def eta_k(t, Fik, f, F, p, tSpan):
-#     '''
-#     :param t: t where I want to evaluate eta_k
-#     :param Fik: Array of payments of kth bond
-#     :param f: f function iteration(what we want to solve)
-#     :param F: function F which transforms f
-#     :param p: Number of derivative
-#     :param tSpan: Time vector
-#     :return: eta for kth bond evaluated in t
-#     '''
-#     bondPeriods,tRangeForBond=_bondPeriodsAndTRangeForBond(Fik,tSpan)
-#     discountFactors=_discountFactors(f, F, tRangeForBond)
-#     outterIntegral=_outter_integral(F, f, t, p, tRangeForBond)
-#
-#     return -np.sum( discountFactors  * Fik[:bondPeriods] * outterIntegral )
+def eta_k(t, Fik, f, F, p, tSpan):
+    '''
+    :param t: t where I want to evaluate eta_k
+    :param Fik: Array of payments of kth bond
+    :param f: f function iteration(what we want to solve)
+    :param F: function F which transforms f
+    :param p: Number of derivative
+    :param tSpan: Time vector
+    :return: eta for kth bond evaluated in t
+    '''
+    bondPeriods,tRangeForBond=_bondPeriodsAndTRangeForBond(Fik,tSpan)
+    discountFactors=_discountFactors(f, F, tRangeForBond)
+    outterIntegral=_outter_integral(F, f, t, p, tRangeForBond)
+    return -np.sum( discountFactors  * Fik[:bondPeriods] * outterIntegral )

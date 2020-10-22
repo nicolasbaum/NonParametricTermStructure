@@ -1,7 +1,7 @@
 from calculate_eta import eta_k
 import numpy as np
 from phi_basis_functions import getPhiBasisFunctions
-from scipy.interpolate import UnivariateSpline
+from scipy.interpolate import InterpolatedUnivariateSpline
 from scalar_product import scalarProduct, getNormOfFunction
 
 
@@ -9,7 +9,7 @@ def ksi_k(Fik, f, F, p, tSpan):
     phiBasisFunctions = getPhiBasisFunctions(p)  # phiFunctions are a basis of W0
     W0coefficients = np.zeros(p)
 
-    eta_kVectorized = eta_k(Fik, f, F, p, tSpan)
+    eta_kVectorized = np.vectorize(lambda x: eta_k(x, Fik, f, F, p, tSpan))
     eta_kEvaluatedInTSpan = eta_kVectorized(tSpan)
     from matplotlib import pyplot as plt
     plt.plot(tSpan,eta_kEvaluatedInTSpan)
@@ -21,7 +21,7 @@ def ksi_k(Fik, f, F, p, tSpan):
                                    / getNormOfFunction(phiFunc, tSpan, p)
         ksi_kEvaluatedInTSpan -= W0coefficients[phiIndex] * phiFuncInTSpan
 
-    return UnivariateSpline(tSpan, ksi_kEvaluatedInTSpan)
+    return InterpolatedUnivariateSpline(tSpan, ksi_kEvaluatedInTSpan)
 
 
 def ksiFuncs(Fi, f, F, p, tSpan):
