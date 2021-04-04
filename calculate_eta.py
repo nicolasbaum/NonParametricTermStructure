@@ -1,29 +1,12 @@
 import numpy as np
 from functools import lru_cache
-from sympy import Symbol, diff
-from sympy.utilities import lambdify
-from scipy.interpolate import UnivariateSpline
 from scipy.integrate import cumtrapz
+
+from algebra import sthDerivativeOff, evaluateFunction
 from optimization import range_memoize
 from H_operator import Hi
 
 N_POINTS = 1000
-
-def _sthDerivativeOff(s,f):
-    x = Symbol('x')
-    for _ in range(s):
-        if isinstance(f,UnivariateSpline):
-            f = f.derivative()
-        else:
-            f = diff(f(x), x)
-    return f
-
-def _evaluateFunction(f,points):
-    if hasattr(f,'subs'):
-        x = Symbol('x')
-        fv = lambdify(x,f,"numpy")
-        return fv(np.array(points))
-    return f(points)
 
 def _discountFactors(f, F, tRangeForBond):
     return np.exp( -Hi(f, F, tRangeForBond) )
@@ -33,7 +16,7 @@ def _bondPeriodsAndTRangeForBond(Fik,tSpan):
     return (bondPeriods,tSpan[:bondPeriods])
 
 def _onlyPositiveSegmentForFunction(func,x):
-    result=_evaluateFunction(func, x)
+    result= evaluateFunction(func, x)
     return np.clip(result,0,None)
 
 
@@ -92,10 +75,10 @@ def _inner_integral(t, tau, p, Tk):
     return np.trapz( np.power(integralFunc,p-1),u)/(np.math.factorial((p-1))**2)
 
 @range_memoize(4)
-def _outter_integral(F,f,t,p,tRangeForBond):
-    diffedF = _sthDerivativeOff(1,F)
-    inner_term = np.vectorize( lambda tau: _inner_sum(t, tau, p)+_inner_integral(t,tau,p,tRangeForBond[-1]) )
-    return cumtrapz(_evaluateFunction(diffedF,f(tRangeForBond))*inner_term(tRangeForBond),tRangeForBond, initial=0)
+def _outter_integral(F,f,t,p,tRangeForBond,tSpan):
+    diffedF = sthDerivativeOff(1, F)
+    inner_term = np.vectorize( lambda tau: _inner_sum(t, tau, p)+_inner_integral(t,tau,p,tSpan[-1]) )
+    return cumtrapz(evaluateFunction(diffedF, f(tRangeForBond)) * inner_term(tRangeForBond), tRangeForBond, initial=0)
 
 def eta_k(t, Fik, f, F, p, tSpan):
     '''
@@ -109,5 +92,5 @@ def eta_k(t, Fik, f, F, p, tSpan):
     '''
     bondPeriods,tRangeForBond=_bondPeriodsAndTRangeForBond(Fik,tSpan)
     discountFactors=_discountFactors(f, F, tRangeForBond)
-    outterIntegral=_outter_integral(F, f, t, p, tRangeForBond)
+    outterIntegral=_outter_integral(F, f, t, p, tRangeForBond,tSpan)
     return -np.sum( discountFactors  * Fik[:bondPeriods] * outterIntegral )

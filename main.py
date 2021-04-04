@@ -10,6 +10,7 @@ from calculate_ksi import ksiFuncs
 from calculate_r import zVectorFromf
 from phi_basis_functions import getPhiBasisFunctions
 from scalar_product import getNormOfFunction
+from algebra import sthDerivativeOff
 from copy import deepcopy
 import datetime
 
@@ -44,7 +45,7 @@ and this isn't easy because settlement dates are not overlapping,
 I'm going to use as a (bad) proxy, the yields as the spots.
 """
 r0 = yieldCurve( tSpan )
-f0=InterpolatedUnivariateSpline(tSpan,np.nan_to_num(invF(r0)),k=1)
+f0=InterpolatedUnivariateSpline(tSpan,np.nan_to_num(invF(sthDerivativeOff(1,r0))),k=1)
 f0Basis = getPhiBasisFunctions(p+1,1)
 
 z0 = zVectorFromf(f0,F,tSpan)
