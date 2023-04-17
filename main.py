@@ -1,5 +1,5 @@
 import numpy as np
-from sympy import Symbol, lambdify
+from sympy import Symbol, lambdify, log, sqrt
 from scipy.interpolate import InterpolatedUnivariateSpline
 from bondcalendar import BondCalendarLoader
 from YTM import YTMCalculator
@@ -9,7 +9,6 @@ from calculate_M import getM
 from calculate_ksi import ksiFuncs
 from calculate_r import zVectorFromf
 from phi_basis_functions import getPhiBasisFunctions
-from scalar_product import getNormOfFunction
 from algebra import sthDerivativeOff
 from copy import deepcopy
 import datetime
@@ -34,8 +33,8 @@ N = Fi.shape[0]
 tSpan = np.arange(1,Fi.shape[1]+1)/12.0
 
 x = Symbol('x')
-F = lambdify(x,x**2, "numpy")
-invF = np.vectorize(lambdify(x,x**0.5, "numpy"))
+F = x ** 2
+invF = sqrt(x)
 
 Lambda = 0.6
 p = 2     # derivative degree used in smoothness equation
@@ -45,14 +44,17 @@ and this isn't easy because settlement dates are not overlapping,
 I'm going to use as a (bad) proxy, the yields as the spots.
 """
 r0 = yieldCurve(tSpan)
-f0 = InterpolatedUnivariateSpline(tSpan,np.nan_to_num(invF(sthDerivativeOff(1,r0))),k=1)
-f0Basis = getPhiBasisFunctions(p+1,1)
+# f0 = InterpolatedUnivariateSpline(tSpan,np.nan_to_num(invF(sthDerivativeOff(1,r0))),k=1)
+t = Symbol('t')
+# Define the equation representing the constant function
+f0 = log(1+t)
+f0Basis = getPhiBasisFunctions(p+1, tSpan[-1])[1:]
 
-z0 = zVectorFromf(f0,F,tSpan)
+# z0 = zVectorFromf(f0,F,tSpan)
 
 steps = 0
 while steps < 3:
-    print('Iteration #{}'.format(steps))
+    print(f"Iteration #{steps}")
     # Idea behind f=f0 is that I want to converge to the final result where previous iteration = current f
     ksi_functions = ksiFuncs(Fi, f0, F, p, tSpan)
     M = getM(Lambda,Fi,ksi_functions,p,tSpan)
@@ -67,7 +69,7 @@ while steps < 3:
     c = np.squeeze(np.array(invM @ (np.eye(len(aux2)) - aux2) @ y))
 
     previous_f = deepcopy(f0)
-    phiSum = np.sum([d[basisIndex]*f0BasisFunc(tSpan)/getNormOfFunction(f0BasisFunc, tSpan, p)
+    phiSum = np.sum([d[basisIndex]*f0BasisFunc(tSpan)
                      for basisIndex, f0BasisFunc in enumerate(f0Basis)], axis=0)
     ksiSum = np.sum([c[ksiIndex]*ksiFunc(tSpan) for ksiIndex,ksiFunc in enumerate(ksi_functions)], axis=0)
     f0Vector = phiSum+ksiSum

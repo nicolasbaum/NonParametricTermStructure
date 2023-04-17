@@ -1,27 +1,26 @@
 from calculate_eta import eta_k
 import numpy as np
 from phi_basis_functions import getPhiBasisFunctions
-from scipy.interpolate import InterpolatedUnivariateSpline
-from scalar_product import scalarProduct, getNormOfFunction
+from copy import copy
+from scalar_product import scalarProduct
 
 
 def ksi_k(Fik, f, F, p, tSpan):
-    phiBasisFunctions = getPhiBasisFunctions(p)  # phiFunctions are a basis of W0
+    phiBasisFunctions = getPhiBasisFunctions(p, T=tSpan[-1])  # phiFunctions are a basis of W0
     W0coefficients = np.zeros(p)
 
-    eta_kVectorized = np.vectorize(lambda x: eta_k(x, Fik, f, F, p, tSpan))
-    eta_kEvaluatedInTSpan = eta_kVectorized(tSpan)
-    from matplotlib import pyplot as plt
-    plt.plot(tSpan,eta_kEvaluatedInTSpan)
-    ksi_kEvaluatedInTSpan = eta_kEvaluatedInTSpan.copy()
+    _eta_k = eta_k(Fik, f, F, p, tSpan)
+    # eta_kEvaluatedInTSpan = eta_kVectorized(tSpan)
+    # from matplotlib import pyplot as plt
+    # plt.plot(tSpan,eta_kEvaluatedInTSpan)
+    ksi_k = copy(_eta_k)
     # Subtracting projection of eta_k in each phiFunc to get projection of eta_k in W1
     for phiIndex, phiFunc in enumerate(phiBasisFunctions):
-        phiFuncInTSpan = phiFunc(tSpan)
-        W0coefficients[phiIndex] = scalarProduct(eta_kEvaluatedInTSpan, phiFuncInTSpan, p, tSpan) \
-                                   / getNormOfFunction(phiFunc, tSpan, p)
-        ksi_kEvaluatedInTSpan -= W0coefficients[phiIndex] * phiFuncInTSpan
+        # phiFuncInTSpan = phiFunc(tSpan)
+        W0coefficients[phiIndex] = scalarProduct(_eta_k, phiFunc, p, tSpan[-1])
+        ksi_k -= W0coefficients[phiIndex] * phiFunc
 
-    return InterpolatedUnivariateSpline(tSpan, ksi_kEvaluatedInTSpan)
+    return ksi_k
 
 
 def ksiFuncs(Fi, f, F, p, tSpan):
@@ -30,6 +29,6 @@ def ksiFuncs(Fi, f, F, p, tSpan):
     #COMMENTED LINES FOR DEBUG
     from matplotlib import pyplot as plt
     plt.figure()
-    a= [ksi_k(Fik, f, F, p, tSpan) for Fik in Fi]
+    a = [ksi_k(Fik, f, F, p, tSpan)(tSpan) for Fik in Fi]
     plt.draw()
     return a
