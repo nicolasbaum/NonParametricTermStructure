@@ -1,15 +1,15 @@
 import numpy as np
-from sympy import Symbol, lambdify, log, sqrt
-from scipy.interpolate import InterpolatedUnivariateSpline
+import sympy as sp
+from matplotlib import pyplot as plt
 from bondcalendar import BondCalendarLoader
-from YTM import YTMCalculator
+from YTM import YTMCalculator, NelsonSiegelModel
+from optimization import PolynomialModel
 from tilde_y import tilde_y
 from calculate_T import getT
 from calculate_M import getM
 from calculate_ksi import ksiFuncs
 from calculate_r import zVectorFromf
 from phi_basis_functions import getPhiBasisFunctions
-from algebra import sthDerivativeOff
 from copy import deepcopy
 import datetime
 
@@ -32,9 +32,9 @@ for i,sf in enumerate(scaleFactors):
 N = Fi.shape[0]
 tSpan = np.arange(1,Fi.shape[1]+1)/12.0
 
-x = Symbol('x')
+x = sp.Symbol('x')
 F = x ** 2
-invF = sqrt(x)
+invF = sp.sqrt(x)
 
 Lambda = 0.6
 p = 2     # derivative degree used in smoothness equation
@@ -44,21 +44,25 @@ and this isn't easy because settlement dates are not overlapping,
 I'm going to use as a (bad) proxy, the yields as the spots.
 """
 r0 = yieldCurve(tSpan)
-# f0 = InterpolatedUnivariateSpline(tSpan,np.nan_to_num(invF(sthDerivativeOff(1,r0))),k=1)
-t = Symbol('t')
-# Define the equation representing the constant function
-f0 = log(1+t)
+t = sp.Symbol('t')
+# f0 = 1-sp.exp(-t)
+# f0 = NelsonSiegelModel(tSpan, r0).sympy_implementation()
+f0 = PolynomialModel(tSpan, r0).sympy_implementation()
 f0Basis = getPhiBasisFunctions(p+1, tSpan[-1])[1:]
 
-# z0 = zVectorFromf(f0,F,tSpan)
+z0 = zVectorFromf(f0,F,tSpan)
 
 steps = 0
-while steps < 3:
+while steps < 10:
     print(f"Iteration #{steps}")
     # Idea behind f=f0 is that I want to converge to the final result where previous iteration = current f
+    print("Calculating ksi functions")
     ksi_functions = ksiFuncs(Fi, f0, F, p, tSpan)
+    print("Calculating M")
     M = getM(Lambda,Fi,ksi_functions,p,tSpan)
+    print("Calculating T")
     T = getT(p, Fi, f0, F, tSpan)
+    print("Calculating tilde y")
     y = tilde_y(P, Fi, f0, tSpan,F)
 
     # Check original idea that uses QR decomposition
@@ -69,19 +73,20 @@ while steps < 3:
     c = np.squeeze(np.array(invM @ (np.eye(len(aux2)) - aux2) @ y))
 
     previous_f = deepcopy(f0)
-    phiSum = np.sum([d[basisIndex]*f0BasisFunc(tSpan)
-                     for basisIndex, f0BasisFunc in enumerate(f0Basis)], axis=0)
-    ksiSum = np.sum([c[ksiIndex]*ksiFunc(tSpan) for ksiIndex,ksiFunc in enumerate(ksi_functions)], axis=0)
-    f0Vector = phiSum+ksiSum
-    f0 = InterpolatedUnivariateSpline(np.concatenate([[0],tSpan]), np.concatenate([[0], f0Vector]))
+
+    phiSum = sum(d[basisIndex]*f0BasisFunc for basisIndex, f0BasisFunc in enumerate(f0Basis))
+    ksiSum = sum(c[ksiIndex]*ksiFunc for ksiIndex, ksiFunc in enumerate(ksi_functions))
+    print("Simplifying f0")
+    f0 = sp.simplify(phiSum+ksiSum)
+
+    # z0Calculated = zVectorFromf(f0,F,tSpan)
+    plt.plot(tSpan, sp.lambdify(t, f0,'numpy')(tSpan), label=f"Iteration {steps}")
+
     steps += 1
 
-z0Calculated = zVectorFromf(f0,F,tSpan)
-from matplotlib import pyplot as plt
-plt.plot(tSpan, z0,'b')
-plt.plot(tSpan, z0Calculated, 'g')
+plt.plot(tSpan, r0, 'b', label='r0')
+plt.legend()
 plt.show()
-
 # from matplotlib import pyplot as plt
 # from matplotlib.pyplot import cm
 # color=iter(cm.rainbow(np.linspace(0,1,len(f0Basis))))

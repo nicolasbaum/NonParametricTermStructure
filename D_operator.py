@@ -1,10 +1,16 @@
-from scipy.integrate import cumtrapz
-from sympy import Symbol, diff, lambdify
-from H_operator import Hi
+from optimization import quad_with_memoize
+import sympy as sp
 import numpy as np
 
+
 def Dk(Fik, f0, f, F, tRangeForBond):
-    x = Symbol('x')
-    #Revisar esto de la diferenciacion de F
-    diffedF = lambdify( x, diff( F(x), x ), "numpy" )
-    return -np.sum( np.exp(-Hi(f0,F,tRangeForBond)) *Fik* cumtrapz(diffedF(f0(tRangeForBond)) * f(tRangeForBond), tRangeForBond, initial=0) )
+    x, t = sp.symbols('x t')
+    inner_integrand_vectorized = sp.lambdify(t, f * F.diff().subs(x, f0), 'numpy')
+    outer_integrand = sp.lambdify(t, F.subs(x, f0), 'numpy')
+    sumands = []
+    for i, Fik_i in enumerate(Fik):
+        sumands.append(np.exp(-quad_with_memoize(outer_integrand,
+                                                 0, tRangeForBond[i])) * Fik_i *
+                       quad_with_memoize(inner_integrand_vectorized,
+                                         0, tRangeForBond[i]))
+    return -sum(sumands)

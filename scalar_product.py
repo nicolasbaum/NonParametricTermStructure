@@ -1,19 +1,21 @@
-from sympy import Symbol, diff, lambdify, integrate
+from sympy import Symbol, diff, lambdify, integrate, simplify
+from optimization import method_with_sympy_func_memoize, quad_with_memoize, WaveletReconstructedFunction
 from scipy.interpolate import UnivariateSpline
+from scipy.integrate import cumtrapz
 import numpy as np
 
 
-def diffNtimes(myfunction, N):
-    if N == 0:
-        return myfunction
-    if isinstance(myfunction, UnivariateSpline):
-        return myfunction.derivative(N)
-    if isinstance(myfunction, np.ndarray):
-        return np.concatenate([[0], np.diff(myfunction)])
-    x = Symbol('tau')
-    for _ in range(N):
-        f = lambdify(x, diff(myfunction(x), x), "numpy")
-    return f
+# def diffNtimes(myfunction, N):
+#     if N == 0:
+#         return myfunction
+#     if isinstance(myfunction, UnivariateSpline):
+#         return myfunction.derivative(N)
+#     if isinstance(myfunction, np.ndarray):
+#         return np.concatenate([[0], np.diff(myfunction)])
+#     x = Symbol('tau')
+#     for _ in range(N):
+#         f = lambdify(x, diff(myfunction(x), x), "numpy")
+#     return f
 
 
 # def getNormOfFunction(function, tSpan, p):
@@ -44,9 +46,22 @@ def diffNtimes(myfunction, N):
 #
 #     return firstSum + integral
 
-
+@method_with_sympy_func_memoize
 def scalarProduct(f, g, p, T):
+    # if isinstance(f, WaveletReconstructedFunction) and isinstance(g, WaveletReconstructedFunction):
+    #     fvector = f.vector()
+    #     gvector = g.vector()
+    #     fvectorDiff = fvector.copy()
+    #     gvectorDiff = gvector.copy()
+    #     for i in range(p):
+    #         fvectorDiff = (np.concatenate([[0], np.diff(fvectorDiff)]))
+    #         gvectorDiff = (np.concatenate([[0], np.diff(gvectorDiff)]))
+    #     x = np.linspace(0, T, len(fvector))
+    #     return cumtrapz(fvectorDiff * gvectorDiff, x)[-1]
+
     t = Symbol('t')
     sum_term = sum([f.diff(t, i).subs(t, 0) * g.diff(t, i).subs(t, 0) for i in range(p)])
-    integral_term = integrate(f.diff(t, p) * g.diff(t, p), (t, 0, T))
+    integrand = f.diff(t, p) * g.diff(t, p)
+    integrand_vectorized = lambdify(t, integrand, 'numpy')
+    integral_term = quad_with_memoize(integrand_vectorized, 0, T)
     return sum_term + integral_term
