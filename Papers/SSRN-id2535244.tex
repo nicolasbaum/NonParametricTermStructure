@@ -1,0 +1,900 @@
+\documentclass[10pt]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{amsmath}
+\usepackage{amsfonts}
+\usepackage{amssymb}
+\usepackage[version=4]{mhchem}
+\usepackage{stmaryrd}
+\usepackage{hyperref}
+\hypersetup{colorlinks=true, linkcolor=blue, filecolor=magenta, urlcolor=cyan,}
+\urlstyle{same}
+\usepackage{bbold}
+\usepackage{graphicx}
+\usepackage[export]{adjustbox}
+\graphicspath{ {./images/} }
+
+\title{A NONPARAMETRIC METHOD FOR TERM STRUCTURE FITTING WITH AUTOMATIC SMOOTHING }
+
+\author{WORKING PAPERS}
+\date{}
+
+
+%New command to display footnote whose markers will always be hidden
+\let\svthefootnote\thefootnote
+\newcommand\blfootnotetext[1]{%
+  \let\thefootnote\relax\footnote{#1}%
+  \addtocounter{footnote}{-1}%
+  \let\thefootnote\svthefootnote%
+}
+
+%Overriding the \footnotetext command to hide the marker if its value is `0`
+\let\svfootnotetext\footnotetext
+\renewcommand\footnotetext[2][?]{%
+  \if\relax#1\relax%
+    \ifnum\value{footnote}=0\blfootnotetext{#2}\else\svfootnotetext{#2}\fi%
+  \else%
+    \if?#1\ifnum\value{footnote}=0\blfootnotetext{#2}\else\svfootnotetext{#2}\fi%
+    \else\svfootnotetext[#1]{#2}\fi%
+  \fi
+}
+
+\begin{document}
+\maketitle
+\section*{NATIONAL RESEARCH UNIVERSITY HIGHER SCHOOL OF ECONOMICS}
+Victor Lapshin, Vadim Kaushanskiy
+
+SERIES: Financial Economics\\
+WP BRP 39/FE/2014
+
+\section*{Victor Lapshin ${ }^{1}$, Vadim Kaushanskiy ${ }^{2}$}
+\section*{A Nonparametric Method for Term Structure Fitting with Automatic Smoothing}
+We present a new nonparametric method for fitting the term structure of interest rates from bond prices. Our method is a variant of the smoothing spline approach, but within our framework we are able to determine the smoothing coefficient automatically from the data using generalized crossvalidation or maximum likelihood estimates. We present an effective numerical algorithm to simultaneously find the term structure and the optimal smoothing coefficient. Finally, we compare the proposed nonparametric fitting method with other parametric and nonparametric methods to show its superior performance.
+
+JEL Classification: G12, C14.\\
+Key words: regularization, smoothing splines, term structure of interest rates.
+
+\footnotetext{${ }^{1}$ National Research University Higher School of Economics. Laboratory for Financial Engineering and Risk Management. Research Fellow; E-mail: \href{mailto:vlapshin@hse.ru}{vlapshin@hse.ru}\\
+${ }^{2}$ National Research University Higher School of Economics. Laboratory for Financial Engineering and Risk Management. Research Assistant; E-mail: \href{mailto:vkaushanskiy@hse.ru}{vkaushanskiy@hse.ru}
+}\section*{1 Introduction}
+The term structure of interest rates is fundamental to many areas of financial analysis: pricing and hedging derivatives, risk management, project analysis, accounting, actuarial science. While all these areas use the term structure of interest rates, different notions are (or should be) assumed by these words. For example, before the recent financial crisis, in pricing and hedging derivatives were used swap rates. Nowadays to price or hedge a derivative instrument correctly, a whole range of different interest rates are modelled: Libor (or Euribor), Interest Rate Swap rates, Overnight Indexed Swap rates, repo rates, bond rates, and more. Nevertheless, for some other applications we still need the term structure of bond rates. For example, pension funds are usually legally restricted in their investments, so they may find the term structure of (government) bond rates the interest rate of their choice. Unfortunately, the term structure of bond rates is not readily available on the market. In this paper we deal with the problem of estimating it from the market data.
+
+Different applications require different approaches to interest rate modelling. Pricing and hedging derivatives is usually done via stochastic interest rate models, which may describe the risk-neutral stochastic evolution of the short rate and/or other variables such as its variance, long rate or even the whole yield curve (as in the Heath-Jarrow-Morton framework). However, these models are designed to model the short-term fluctuations of interest rates and either imply a non-realistic term structure or assume that the term structure is directly observable on the market at any moment. Risk management applications also usually employ stochastic models (although, no more risk-neutral) to sample from a distribution of future rates in order to assess risks, perform stress-testing and so on. Once again, the stochastic properties of the model come in front of its term structure fitting possibilities, except when a significant part of the portfolio is comprised of bonds, which may be the case for pension funds, life insurance companies, and fixed-income hedge funds. However, fitting the term structure to market data is most useful when performing fair value pricing for accounting purposes or actuarial assessments. Of course, for routine marking to market and setting trading limits, the fitting procedure has to be modified to ensure temporal stability, as for these applications stability and simplicity is usually preferable over quality and precision. That said, we consider a single-time fitting of the term structure to a snapshot of the bond market. This problem naturally arises during investment analysis, monetary decision making,\\
+periodic and occasional reporting and various assessments, external auditing, and cases when the data sample is limited to a snapshot of the market or when we have reasons to believe that the market has changed completely since the last time we performed this calculation, so historic data is irrelevant. Generalizing the setting to continuous everyday fitting poses many new problems, which we partially address in ongoing research. From now on, we consider only snapshot term structure fitting.
+
+Term structure estimation has a long history, of which we limit ourselves to only the key milestones. For a more detailed exposition we refer the reader to the review article by Schmidt (2011) or to specialized treatises by James and Webber (2000) and by Andersen and Piterbarg (2010). It should be noted again that we do not consider stochastic (dynamic) interest rate models here, these are used mainly for pricing/hedging derivatives and risk management. A recent artice by Jarrow (2014) presents an overview of dynamic term structure fitting methods. Before reviewing the literature we need to introduce some notation. We use the words 'term structure' to denote either the discount function $d(t)$, the zero-coupon yield $r(t)$ or the instantaneous forward rate $s(t)$. Under continuous compounding convention, they are linked by a simple relationship:
+
+$$
+d(t)=\exp [-r(t) t]=\exp \left[\int_{0}^{t} s(\tau) d \tau\right]
+$$
+
+The term structure estimation will mean obtaining an estimate of any of these functions. The existing methods of the term structure estimation may be divided into three main groups.
+
+\begin{enumerate}
+  \item Ad hoc methods. These are techniques designed to obtain a plausible result, but sometimes lacking financial soundness, intuition, explanation, exploiting a unique idea, or estimating something else. In the beginning, people used to draw the dots on the $(t, r)$-plane: one for each bond, its term to maturity and yield, and connect them with a smooth line by hand. Such a curve was called a 'yield curve' and could give a general notion of the interest rate term structure. The bootstrap method of Fama (1987), kernel smoothing methods by Linton, Mammen, Nielsen, and Tanggaard (2001) are other examples of this family.
+\end{enumerate}
+
+Before introducing the other two groups, we note that the term structure estimation problem is ill-posed, because the input data, whatever it is (we come to this later), is finite-dimensional\\
+while the term structure is an infinite-dimensional object (a function). Therefore to estimate it, a priori assumptions are made to regularize the problem in some way. According to the nature of these a priori assumptions or regularizations, we divide the methods into two classes.\\
+2. Parametric methods. One may assume that the unknown function $d(\cdot), r(\cdot)$ or $s(\cdot)$ has a known parametric form (belongs to a finite-dimensional manifold). Once this assumption is made and given the number of parameters is sufficiently low, the problem becomes well-posed and may be solved usually in the least squares sense (although we'll return to this point later). The key examples of parametric families used for term structure fitting are by Nelson and Siegel (1987) and Svensson (1994), which are widely used.\\
+3. Spline methods. Instead of assuming a specific parametric form, one may assume that the unknown function possesses an extreme property of some kind: minimum length or curvature, minimum potential energy, etc. Since this kind of regularization usually results in some kinds of splines, we call these techniques spline methods. However if we just search for the solution in the form of a particular spline this should be considered as a parametric method, since we simply assume a specific parametric form of a piecewise defined function. Splines were used for term structure estimations by McCulloch (1971, 1975); Vasicek and Fong (1982) and many others.
+
+Since our proposed method belongs to the class of spline methods, we continue reviewing the literature regarding spline methods. Adams and van Deventer (1994) used smoothing splines, Fisher, Nychka and Zervos (1995) introduced automatic choice of the smoothing parameter, Waggoner (1997) had the smoothing parameter depend on $t$ - the term to maturity. Smirnov and Zakharov (2003) exposed the methodologically correct routine by starting from an assumption about an extreme property and arriving at an exponential-sinusoidal spline via formal mathematical methods.
+
+Since the introducing of the STRIPS program into the US bond market, estimating the term structure has become a much more simple task and has gradually faded out of the view of US researchers. However, researchers in other countries, especially in those having less liquid bond markets, have been trying to devise a perfect estimation method. We mention several of these works. Gimeno (2009) employ genetic algorithms to fit Nelson-Siegel and Svensson parametric forms to Spanish bond data,
+
+Sanchez (2004) use fuzzy mathematics to obtain an estimate of the discount function, Lin (2002) uses B-splines to fit Taiwanese interest rates. Andersen (2008) uses tension splines, Hagan and West (2006) compare different spline and interpolation techniques for a model dataset. Laurini and Hotta (2010) introduces Bayesian a extension of a dynamic parametric method of Diebold and Li (2006) and uses it on Brazilian data. There is a general understanding that parametric methods may do well in developed bond markets such as in US or Europe but they lack flexibility and the ability to reflect complex term structures usually found in developing markets, where spline methods are usually used.
+
+Unfortunately, almost all spline methods except the one by Fisher, Nychka and Zervos (1995) (FNZ) require manual (expert) choice for the smoothing parameter. We present a new spline term structure estimation method, which does not require manual tuning and compare it to FNZ and some parametric alternatives.
+
+The rest of the article is organized as follows. Section 2 introduces the rest of the notation and formulate the mathematical problem. Section 3 solves the mathematical problem to obtain a spline. Sections 4 and 5 present a numerical procedure to estimate both the spline coefficients and the regularization parameter. Finally, Section 6 describes our data and compare our method with several widespread parametric families and with FNZ, which is also a fully automatic spline method. Section 7 concludes.
+
+\section*{2 Problem Formulation}
+Now suppose that there are $N$ bonds traded on the market, with prices $P_{k}, k=1, \ldots, N$, paying $F_{i, k}, i=0, \ldots, n, k=1, \ldots, N$, at times $t_{i}$ respectively. Note that in a typical situation most of the $F_{i, k}$ will be zeros since payment times usually do not coincide.
+
+We assume that any coupon bond is equvalent to a portfolio of zero-coupon bonds with appropriate notionals and maturities. Therefore we can express the theoretical price of the $k-t h$ bond, $P_{k}^{*}$ :
+
+$$
+P_{k}^{*}=\sum_{i=0}^{n} d\left(t_{i}\right) F_{i, k}
+$$
+
+where $d(t)$ is the (unknown) discount function.
+
+A discount function must satisfy several constraints in order to be economically reasonable.
+
+\begin{enumerate}
+  \item $d(t)$ should be non-strictly decreasing on its domain;
+  \item $d(t)>0$;
+  \item $d(0)=1$.
+\end{enumerate}
+
+Therefore, the problem is to find the discount function $d(t)$ on [ $0, t_{n}$ ] satisfying the conditions above and such that.
+
+$$
+\sum_{i=0}^{n} d\left(t_{i}\right) F_{i, k} \approx P_{k}, k=1, \ldots, N
+$$
+
+where the latter is usually considered in the least squares sense, although we consider an improved version in this paper. For now we just state that the function $d(t)$ minimizes
+
+$$
+J_{1}=\sum_{k=1}^{N}\left(P_{k}-\sum_{i=1}^{n} F_{i, k} d\left(t_{i}\right)\right)^{2}
+$$
+
+Observe that this problem is ill-posed. Actually, only values $d\left(t_{i}\right)$ can be determined from these conditions.
+
+Principles of solving ill-posed problems are described by Tikhonov and Arsenin (1979). According to these principles, we suppose that the sought term structure is smooth, more precisely, that it minimizes
+
+$$
+J_{2}=\int_{0}^{T} \xi\left(s^{[p]}(\tau)\right) d \tau
+$$
+
+where $T=t_{n}, s(t)$ is the spot forward rate for the time $t, p$ is the derivative order and $\xi(\cdot)$ is some pre-specified transformation function.
+
+To satisfy the conditions stated above, we consider the following change of variables:
+
+
+\begin{equation*}
+d(t)=\exp \left(-\int_{0}^{t} F(f(\tau)) d \tau\right) \tag{1}
+\end{equation*}
+
+
+where $f=\xi(s)$ is the unknown and $F=\xi^{-1}$ is a specified function.\\
+Plugging this into $J_{1}$ and adding $J_{2}$, we get that the unknown function $f(t)$ is the solution of the following minimization problem:
+
+
+\begin{equation*}
+J_{1}(f)+\alpha J_{2}(f)=\sum_{k=1}^{N}\left(P_{k}-\sum_{i=1}^{n} F_{i, k} e^{-\int_{0}^{t_{i}} F(f(\tau)) d \tau}\right)^{2}+\alpha \int_{0}^{T}\left(f^{[p]}\right)^{2}(\tau) d \tau \rightarrow \min _{f(\cdot)} \tag{2}
+\end{equation*}
+
+
+where $\alpha$ is the regularization parameter governing the interplay between precision ( $J_{1}$ term) and smoothness ( $J_{2}$ term). The regularization parameter is usually set exogenously by an human expert. In this article we present an algorithm to determine its value from the data.
+
+\section*{3 Solving the minimization problem}
+In the previous section we arrived at the problem
+
+
+\begin{equation*}
+\sum_{k=1}^{N}\left(\sum_{i=0}^{n} F_{i k} d\left(t_{i}\right)-P_{k}\right)^{2}+\alpha \int_{0}^{T}\left(f^{[p]}\right)^{2}(\tau) d \tau \rightarrow \min _{f(\cdot)} \tag{3}
+\end{equation*}
+
+
+where
+
+$$
+d\left(t_{i}\right)=\exp \left(-\int_{0}^{t_{i}} F(f(\tau)) d \tau\right)
+$$
+
+For simplicity consider $G(x)=x^{2}$ in this section. While further we will extend our solution for more general case.
+
+Let
+
+
+\begin{equation*}
+c_{i}=\int_{t_{i-1}}^{t_{i}} f^{2}(\tau) d \tau, i=1, \ldots, n \tag{4}
+\end{equation*}
+
+
+Notice that this substitution allows us to split our problem into 2 subproblems:
+
+\begin{enumerate}
+  \item Given fixed $\left\{c_{i}\right\}$ (this fixes $J_{1}$ ), find the function $f_{c_{1}, \ldots, c_{n}}$ minimizing $J_{2}$. This is a conditional minimization problem.
+  \item Find $\left\{c_{i}\right\}$, for which $f_{c_{1}, \ldots, c_{n}}$ minimizes the functional $J_{1}+\alpha J_{2}$. This is a finite-dimensional\\
+optimization problem.
+\end{enumerate}
+
+Note that the set $\left\{c_{i}\right\}$ determines $d(t)$ in partition points $t_{1}, \ldots, t_{n}$ while the regularization is responsible for the values of $d(t)$ at intermediate points.
+
+First of all, we solve the minimization problem (3) with the condition (4). The Lagrangian is
+
+
+\begin{equation*}
+L=\alpha \int_{0}^{T}\left(f^{[p]}\right)^{2}(\tau) d \tau+\sum_{i=1}^{n} \lambda_{i}\left(\int_{\chi_{i-1}}^{t_{i}} F(f(\tau)) d \tau-c_{i}\right) \tag{5}
+\end{equation*}
+
+
+A necessary condition for an extremum is:
+
+
+\begin{equation*}
+\sum_{i=1}^{n}\left(2 \alpha \int_{t_{i-1}}^{t_{i}} f^{[p]}(\tau) h^{[p]}(\tau) d \tau+\lambda_{i} \int_{t_{i-1}}^{t_{i}} F^{\prime}(f(\tau)) h(\tau) d \tau\right)=0 \tag{6}
+\end{equation*}
+
+
+for any $p$ times continuously differentiable function $h(t)$.\\
+Further, for convenience, let $f_{i}(t)$ be $f(t)$ restricted to the segment $\left[t_{i-1}, t_{i}\right]$. Integrating by parts, we have:
+
+
+\begin{align*}
+\alpha \sum_{i=1}^{n}\left(\sum _ { s = 1 } ^ { p } ( - 1 ) ^ { s } \left(f_{i}^{[p+s-1]}\left(t_{i}-0\right) h^{[p-s]}\left(t_{i}\right)\right.\right. & \left.-f_{i}^{[p+s-1]}\left(t_{i-1}+0\right) h^{[p-s]}\left(t_{i-1}\right)\right)+ \\
+& \left.+\int_{t_{i-1}}^{t_{i}}\left((-1)^{p} f_{i}^{[2 p]}(\tau)+\frac{\lambda_{i}}{2 \alpha} f_{i}(\tau)\right) h(\tau) d \tau\right)=0 \tag{7}
+\end{align*}
+
+
+Assuming $f_{i} \in C^{2 p}\left[t_{i-1}, t_{i}\right]$,
+
+
+\begin{gather*}
+f_{i}^{[s]}\left(t_{i}-0\right)=f_{i+1}^{[s]}\left(t_{i}+0\right), i=2, \ldots, n-1, s=1, \ldots, p  \tag{8}\\
+f_{1}^{[s]}(0+0)=f_{n}^{[s]}(T-0)=0, s=1, \ldots, p  \tag{9}\\
+f_{i}^{[2 p]}(t)=(-1)^{p+1} \frac{\lambda_{i}}{2 \alpha} F^{\prime}\left(f_{i}(t)\right), t \in\left(t_{i-1}, t_{i}\right), i=1, \ldots, n \tag{10}
+\end{gather*}
+
+
+In general case, the analytic solution stops here. However, we present a simple solution for $p=$ 1, $F(x)=x^{2}$ for illustration purposes.
+
+This minimization problem could be addressed via the Pontryagin maximum principle along the lines of Lapshin (2009). However, since an analytic solution is presented only for illustration, we would like to keep it simple.
+
+Let $F(x)=x^{2}, p=1$.
+
+
+\begin{gather*}
+f^{\prime}{ }_{i}\left(t_{i}-0\right)=f_{i+1}^{\prime}\left(t_{i}+0\right), i=2, \ldots, n-1,  \tag{11}\\
+{f^{\prime}}_{1}(0+0)=f_{n}^{\prime}(T-0)=0,  \tag{12}\\
+f_{i}^{\prime \prime}(t)=\frac{\lambda_{i}}{\alpha} f_{i}(t), t \in\left(t_{i-1}, t_{i}\right), i=1, \ldots, n . \tag{13}
+\end{gather*}
+
+
+Solving this system, we get
+
+\[
+f_{i}(t)=\left\{\begin{array}{c}
+C_{i}^{1} \sin \sqrt{-\gamma_{i} t}+C_{i}^{2} \cos \sqrt{-\gamma_{i} t}, \gamma_{i}<0  \tag{14}\\
+C_{i}^{1} \exp \left(\sqrt{\gamma_{i} t}\right)+C_{i}^{2} \exp \left(-\sqrt{\gamma_{i} t}\right), \gamma_{i}>0 \\
+C_{i}^{1}+C_{i}^{2} t, \gamma_{i}=0
+\end{array}\right.
+\]
+
+where $\gamma_{i}=\frac{\lambda_{i}}{\alpha}$, and $C_{i}^{1}, C_{i}^{2}$ are constants.\\
+Notice that $C_{i}^{1}, C_{i}^{2}, \lambda_{i}$ depend on $c_{1}, \ldots, c_{n}$. Consequently, we have that $f(t)$ has the form of an sinusoidal-exponential spline (14). Spline coefficients $C_{i}^{1}, C_{i}^{2}, \lambda_{i}$ can be determined from $\left\{c_{i}\right\}$ by solving $3 n$ equations.
+
+
+\begin{gather*}
+\int_{t_{i-1}}^{t_{i}} f^{2}(\tau) d \tau=c_{i}, i=1, \ldots, n  \tag{15}\\
+f_{i+1}\left(t_{i}+0\right)=f_{i}\left(t_{i}-0\right), i=1, \ldots, n-1  \tag{16}\\
+f_{i+1}^{\prime}\left(t_{i}+0\right)=f_{i}^{\prime}\left(t_{i}-0\right), i=1, \ldots, n-1  \tag{17}\\
+f_{1}^{\prime}(0+0)=f_{n}^{\prime}(T-0)=0 . \tag{18}
+\end{gather*}
+
+
+The rest is a finite-dimensional optimization problem. This is not the most computationally efficient way to address this particular problem, however it illustrates the spline nature of the method.
+
+\section*{4 Numerical method}
+For arbitrary $p$ and $F$ an analytic solution cannot be found, therefore we consider a numerical method.\\
+Let
+
+$$
+\left\{\begin{array}{l}
+J_{1}=\sum_{k=1}^{N}\left(\sum_{i=1}^{n} F_{i k} e^{-\int_{0}^{t_{i}} F(f(\tau)) d \tau}-P_{k}\right)^{2} \\
+J_{2}=\int_{0}^{T}\left(f^{(p)}\right)^{2}(\tau) d \tau
+\end{array}\right.
+$$
+
+in the following minimization problem:
+
+
+\begin{equation*}
+J_{1}+\alpha J_{2} \rightarrow \min _{f(\cdot)} \tag{19}
+\end{equation*}
+
+
+For convenience we introduce the following notation:
+
+
+\begin{equation*}
+\mathcal{N}_{k} f=\sum_{i=1}^{n} F_{i k} e^{-\int_{0}^{t_{i}} F(f(\tau))} \tag{20}
+\end{equation*}
+
+
+$\mathcal{N}_{k}$ is an operator mapping the curve space $W$ to $R$.\\
+We construct an iterative minimization process as follows. Let the previous approximation of $f(t)$ be denoted as $f_{0}(t)$ and let $\mathcal{D}_{k}=\left.\frac{\partial \mathcal{N}_{k}}{\partial f}\right|_{f=f_{0}}$ be the Fréchet derivative of the operator $\mathcal{N}_{k}$ at the point $f_{0} . \mathcal{D}_{k}$ is a linear operator mapping $W \rightarrow R$, such that for any function $f(\cdot) \in W$
+
+$$
+\mathcal{N}_{k} f-\mathcal{N}_{k} f_{0}=\mathcal{D}_{k}\left(f-f_{0}\right)+r_{0}\left(f, f_{0}\right)
+$$
+
+where the reminder $r_{0}\left(f, f_{0}\right)$ satisfies
+
+$$
+\frac{\left\|r_{0}\left(f, f_{0}\right)\right\|}{\left\|f-f_{0}\right\|} \rightarrow 0, \text { when }\left\|f-f_{0}\right\| \rightarrow 0
+$$
+
+Let
+
+$$
+\mathcal{H}_{i} f=\int_{0}^{t_{i}} F(f(t)) d t
+$$
+
+By the chain rule,
+
+
+\begin{equation*}
+\mathcal{D}_{k} f=-\left.\sum_{i} F_{i k} e^{-\mathcal{H}_{i} f_{0}} \frac{\partial \mathcal{H}_{i}}{\partial f}\right|_{f=f_{0}} \tag{21}
+\end{equation*}
+
+
+The derivative of $\mathcal{H}_{i}$ may be calculated via
+
+$$
+\begin{aligned}
+\mathcal{H}_{i} f-\mathcal{H}_{i} f_{0}=\int_{0}^{t_{i}}\left(F(f(\tau))-F\left(f_{0}(\tau)\right)\right) d \tau= & \int_{0}^{t_{i}}\left(F^{\prime}\left(f_{0}(\tau)\right)\left(f(\tau)-f_{0}(\tau)\right)+o\left(f(\tau)-f_{0}(\tau)\right)\right) d \tau= \\
+& =\int_{0}^{t_{i}} F^{\prime}\left(f_{0}(\tau)\right)\left(f(\tau)-f_{0}(\tau)\right) d \tau+o\left(\left\|f-f_{0}\right\|\right)
+\end{aligned}
+$$
+
+Consequently,
+
+$$
+\left.\frac{\partial \mathcal{H}_{i}}{\partial f}\right|_{f=f_{0}}=\int_{0}^{t_{i}} F^{\prime}\left(f_{0}(\tau)\right) f(\tau) d \tau
+$$
+
+Plugging this into (21), we obtain the expression for the operator $\mathcal{D}_{k}$ :
+
+
+\begin{equation*}
+\mathcal{D}_{k} f=-\sum_{i=1}^{n} e^{-\int_{0}^{t_{i}} F\left(f_{0}(\tau)\right) d \tau} F_{i k} \int_{0}^{t_{i}} F^{\prime}\left(f_{0}(\tau)\right) f(\tau) d \tau \tag{22}
+\end{equation*}
+
+
+By the Riesz representation theorem, for a bounded linear operator $\mathcal{D}_{k}$ there is a unique $\eta_{k} \in W$,\\
+s.t. for any $f \in W \mathcal{D}_{k} f=\left\langle\eta_{k}, f\right\rangle$ and also $\left\|\mathcal{D}_{k}\right\|=\left\|\eta_{k}\right\|$.
+
+Let's find $\eta_{k}$ :
+
+
+\begin{equation*}
+-\sum_{i=1}^{n} e^{-\int_{0}^{t_{i}} F\left(f_{-}(\tau)\right) d \tau} F_{i k} \int_{0}^{t_{i}} F^{\prime}\left(f_{-}(\tau)\right) h(\tau) d \tau=\left\langle\eta_{k}, h\right\rangle, \forall h \in W . \tag{23}
+\end{equation*}
+
+
+Let $W$ be equipped with the following scalar product:
+
+$$
+\left\langle\eta_{k}, h\right\rangle=\sum_{s=0}^{p-1} \eta_{k}^{(s)}(0) h^{(s)}(0)+\int_{0}^{T} \eta_{k}^{(p)}(\tau) h^{(p)}(\tau) d \tau
+$$
+
+Statement 1. $\eta_{k}(t)$ has the form:
+
+
+\begin{align*}
+& \eta_{k}(t)=-\sum_{i=1}^{n} \exp \left(-\int_{0}^{t_{i}} F\left(f_{-}(\tau)\right) d \tau\right) F_{i k} \times \\
+& \times \int_{0}^{t_{i}} F^{\prime}\left(f_{-}(\tau)\right)\left(\sum_{s=0}^{p-1} \frac{t^{s} \tau^{s}}{(s!)^{2}}+\int_{0}^{T} \frac{(t-u)_{+}^{p-1}(\tau-u)_{+}^{p-1}}{(p-1)!^{2}} d u\right) d \tau \tag{24}
+\end{align*}
+
+
+Proof. Write the Taylor expansion for $f(t) \in W$ with a reminder in the integral form:
+
+
+\begin{equation*}
+f(t)=\sum_{s=0}^{p-1} \frac{t^{s}}{s!} f^{(s)}(0)+\int_{0}^{T} \frac{(t-u)_{+}^{p-1}}{(p-1)!} f^{(p)}(u) d u . \tag{25}
+\end{equation*}
+
+
+The proof is done via direct verification. Compute $\eta_{k}^{(s)}$ :
+
+$$
+\begin{gathered}
+\eta_{k}^{(s)}(0)=\sum_{i=1}^{n} \exp \left(-\int_{0}^{t_{i}} F\left(f_{0}(\tau)\right) d \tau\right) F_{i k} \int_{0}^{t_{i}} F^{\prime}\left(f_{0}(\tau)\right) \frac{\tau^{s}}{s!} d \tau, s=0, \ldots, p-1 \\
+\eta_{k}^{(p)}(\tau)=\sum_{i=1}^{n} \exp \left(-\int_{0}^{t_{i}} F\left(f_{0}(\tau)\right) d \tau\right) F_{i k} \int_{0}^{t_{i}} F^{\prime}\left(f_{0}(\tau)\right) \frac{(\tau-u)_{+}^{p-1}}{(p-1)!} d u
+\end{gathered}
+$$
+
+Consequently,
+
+
+\begin{align*}
+&\left\langle\eta_{k}, h\right\rangle= \sum_{s=0}^{p-1} \sum_{i=1}^{n} \exp \left(-\int_{0}^{t_{i}} F\left(f_{0}(\tau)\right) d \tau\right) F_{i k} \int_{0}^{t_{i}} F^{\prime}\left(f_{0}(\tau)\right) \frac{\tau^{s}}{s!} d \tau h^{(s)}(0)+ \\
+&+\int_{0}^{T} \sum_{i=1}^{n} \exp \left(-\int_{0}^{t_{i}} F\left(f_{0}(\tau)\right) d \tau\right) F_{i k} \int_{0}^{t_{i}} F^{\prime}\left(f_{0}(\tau)\right) \frac{(\tau-u)_{+}^{p-1}}{(p-1)!} d u h^{(p)}(\tau) d \tau= \\
+&=\sum_{i=1}^{n} \exp \left(-\int_{0}^{t_{i}} F\left(f_{0}(\tau)\right)\right) F_{i k}\left(\sum_{s=0}^{p-1} \int_{0}^{t_{i}} F^{\prime}\left(f_{0}(\tau)\right) \frac{\tau^{s}}{s!} d \tau h^{(s)}(0)+\right. \\
+&\left.+\int_{0}^{T} \int_{0}^{t_{i}} F^{\prime}\left(f_{0}(\tau)\right) \frac{(\tau-u)_{+}^{p-1}}{(p-1)!} d u h^{(p)}(\tau) d \tau\right) \tag{26}
+\end{align*}
+
+
+Function $F^{\prime}\left(f_{0}(\tau)\right) \frac{(\tau-u)_{+}^{p-1}}{(p-1)!} h^{(p)}(\tau)$ is integrable on $[0, T] \times\left[0, t_{i}\right]$, therefore by the Fubini theorem the\\
+order of integration in the second term can be changed.
+
+
+\begin{align*}
+& \sum_{i=1}^{n} \exp \left(-\int_{0}^{t_{i}} F\left(f_{0}(\tau)\right)\right) \\
+& F_{i k}\left(\sum_{s=0}^{p-1} \int_{0}^{t_{i}} F^{\prime}\left(f_{0}(\tau)\right) \frac{\tau^{s}}{s!} d \tau h^{(s)}(0)+\right. \\
+& \left.+\int_{0}^{T} \int_{0}^{t_{i}} F^{\prime}\left(f_{0}(\tau)\right) \frac{(\tau-u)_{+}^{p-1}}{(p-1)!} d u h^{(p)}(\tau) d \tau\right)=  \tag{27}\\
+& =\sum_{i=1}^{n} \exp \left(-\int_{0}^{t_{i}} F\left(f_{0}(\tau)\right)\right) F_{i k} \int_{0}^{t_{i}} F^{\prime}(f(\tau))\left(\sum_{s=0}^{p-1} \frac{\tau^{s}}{s!} h^{(s)}(0)+\int_{0}^{T} \frac{(\tau-u)_{+}^{p-1}}{(p-1)!} h^{(p)}(u) d u\right)
+\end{align*}
+
+
+Plugging (25) in, we arrive at the proof.
+
+Now that we have found the operators $\mathcal{D}_{k}: \mathcal{D}_{k} f=\left\langle\eta_{k}, f\right\rangle$, we may describe the iterative minimization process.
+
+\subsection*{4.1 Iteration description}
+For convenience we denote $\lambda=\frac{\alpha}{N}$. Then rewrite minimization problem:
+
+
+\begin{equation*}
+\sum_{k=1}^{N}\left(\mathcal{N}_{k} f-P_{k}\right)^{2}+N \lambda \int_{0}^{T}\left(f^{(p)}\right)^{2}(\tau) d \tau \rightarrow \min _{f(\cdot)} \tag{28}
+\end{equation*}
+
+
+Let us consider the linear approximation of operators $\mathcal{N}_{k}$ :
+
+$$
+\mathcal{N}_{k} f \approx \mathcal{N}_{k} f_{-}+\mathcal{D}_{k}\left(f-f_{-}\right)
+$$
+
+where $f_{-}$is still the current approximation to the unknown function $f$.\\
+So, instead of (28) we consider the following partially linearized problem
+
+
+\begin{equation*}
+\sum_{k=1}^{N}\left(\mathcal{D}_{k} f-y_{k}\right)^{2}+N \lambda \int_{0}^{T}\left(f^{(p)}\right)^{2}(\tau) d \tau \rightarrow \min _{f(\cdot)} \tag{29}
+\end{equation*}
+
+
+where $y_{k}=P_{k}-\mathcal{N}_{k} f_{-}+\mathcal{D}_{k} f_{-}$.\\
+Now we find the minimizer of (29).
+
+For applying the theory of Wahba (1990), we break the space $W$ into the direct sum of subspaces $W=W^{0}+W^{1}$, where
+
+\begin{itemize}
+  \item $W^{0}$ is the subspace of polynomials, whose degree is less or equal than $p-1$. Functions $\varphi_{j}(t)=$ $\frac{t^{j}}{j!}, j=0, \ldots, p-1$ form a basis of $W^{0}$.
+  \item $W^{1}$ is the subspace of functions satisfying $f(0)=f^{\prime}(0)=\ldots f^{(p-1)}(0)=0$.
+\end{itemize}
+
+As $\mathcal{D}_{k}$ is a bounded linear operator, the following theorem, proved by Wahba (1990) (Theorem 1.3.1, p. 11) is applicable:
+
+Theorem 4.1. The solution of (29) $f_{\lambda}(t)$ has the form:
+
+
+\begin{equation*}
+f_{\lambda}(t)=\sum_{j=1}^{p} d_{j} \varphi_{j}(t)+\sum_{k=1}^{N} c_{k} \xi_{k}(t), \tag{30}
+\end{equation*}
+
+
+where
+
+
+\begin{gather*}
+\mathbf{d}=\left(d_{1}, \ldots, d_{p}\right)^{\prime}=\left(T^{\prime} M^{-1} T\right)^{-1} T^{\prime} M^{-1} y,  \tag{31}\\
+\mathbf{c}=\left(c_{1}, \ldots, c_{N}\right)^{\prime}=M^{-1}\left(I-T\left(T^{\prime} M^{-1} T\right)^{-1} T^{\prime} M^{-1}\right) y,  \tag{32}\\
+T=\left\{\mathcal{D}_{k} \varphi_{j}\right\}, k=1, \ldots, N, j=1, \ldots, p,  \tag{33}\\
+M=\Sigma+N \lambda I,  \tag{34}\\
+\Sigma=\left\{\left\langle\xi_{i}, \xi_{j}\right\rangle\right\},  \tag{35}\\
+\varphi_{j}(t)=\frac{t^{j}}{j!},  \tag{36}\\
+\xi_{k}=P_{1} \eta_{k}, \tag{37}
+\end{gather*}
+
+
+and $P_{1}$ is the orthogonal projector from $W$ onto $W^{1}$.
+
+Using (31) and (32), we can find the solution $f_{\lambda}(t)$ to the problem (29).\\
+After this we consider a new linearization in the vicinity of a new current approximation and repeat the iterative process for finding the minimizer of the problem (19) using new linearizations of operators $\mathcal{N}_{k}$.
+
+This procedure is an analog of the Gauss-Newton method for nonlinear models Bates ans Watts (1988), but we do not linearize the full functional, only a part of it, while the second part remains nonlinear.
+
+\subsection*{4.2 Different bond weights}
+Our procedure can easily accommodate different weights for different bonds. It might be necessary, for example, to reflect the fact that the prices of different bonds can be observed with varying precision, which is usually measured by the bid-ask spread, and therefore require different fitting accuracy. For this, our minimization problem (3) should be modified as follows:
+
+
+\begin{equation*}
+\sum_{k=1}^{N} w_{k}\left(\sum_{i=1}^{n} F_{i k} d\left(t_{i}\right)-P_{k}\right)^{2}+\alpha \int_{0}^{T}\left(f^{[p]}\right)^{2}(\tau) d \tau \rightarrow \min _{f(\cdot)}, \tag{38}
+\end{equation*}
+
+
+The numerical algorithm remains virtually unchanged. Indeed, the operator $\mathcal{N}_{k}$ can be redefined as
+
+$$
+\mathcal{N}_{k} f=\sqrt{w_{k}} \sum_{i=1}^{n} F_{i k} \exp \left(-\int_{0}^{t_{i}} F(f(\tau))\right)
+$$
+
+and prices $P_{k}$ can be replaced by $P_{k}^{\prime}=\sqrt{w_{k}} P_{k}$. Thus, after the change of variables we are back at the same minimization problem.
+
+\section*{5 Estimation of the smoothing parameter}
+The selection of the smoothing parameter is an important task, because the wrong choice might yield economically unsound results. We suggest using two statistical methods: a generalized crossvalidation method and a generalized maximum likelihood method to select the smoothing parameter (Wahba, 1990; Ke and Wang, 2002). In what follows, we briefly describe each of the methods, and write the final expressions for the choice of the smoothing parameter for both of them.
+
+\subsection*{5.1 Cross-validation method}
+The idea of the ordinary leave-out-one cross-validation method is that the parameter $\lambda$ should minimize the OCV score:
+
+
+\begin{equation*}
+O C V(\lambda)=\frac{1}{N} \sum_{k=1}^{N}\left(y_{k}-\mathcal{N}_{k} f^{[k]}\right)^{2} \tag{39}
+\end{equation*}
+
+
+where $f^{[k]}$ is the minimizer of
+
+
+\begin{equation*}
+\sum_{i \neq k}\left(y_{i}-\mathcal{N}_{i} f\right)^{2}+N \lambda \int_{0}^{T}\left(f^{(p)}\right)^{2}(\tau) d \tau \tag{40}
+\end{equation*}
+
+
+The OCV score is the residual of fitting any single bond price via the term structure estimated from all data, except for this very single bond, summarized over all bonds.
+
+Ke and Wang (2002) show that $O C V(\lambda)$ can be approximated as
+
+
+\begin{equation*}
+O C V(\lambda) \approx \frac{1}{N} \sum_{k=1}^{N}\left(y_{k}-\mathcal{N}_{k} f\right)^{2} /\left(1-a_{k k}\right)^{2} \tag{41}
+\end{equation*}
+
+
+where
+
+
+\begin{equation*}
+a_{i j}=\frac{\partial \mathcal{N}_{i} f}{\partial f} \frac{\partial f}{\partial y_{j}} \tag{42}
+\end{equation*}
+
+
+Elements $a_{i j}$ forms the matrix $A$. From we can get
+
+$$
+\left(\begin{array}{r}
+\mathcal{D}_{1} f_{\lambda} \\
+\\
+\ldots \\
+\mathcal{D}_{N} f_{\lambda}
+\end{array}\right)=A(\lambda) y
+$$
+
+Wahba (1990) obtains the following formula:
+
+
+\begin{equation*}
+I-A(\lambda)=n \lambda Q_{2}\left(Q_{2}^{\prime} M Q_{2}\right)^{-1} Q_{2}^{\prime}, \tag{43}
+\end{equation*}
+
+
+where $Q_{1}, Q_{2}$ are the orthogonal matrices forming the QR-decomposition of the matrix $T$ :
+
+
+\begin{equation*}
+T=\left(Q_{1}: Q_{2}\right)\binom{R}{0} \tag{44}
+\end{equation*}
+
+
+Now let us consider a generalized version of this method. Instead of $a_{k k}$ we use the value $\mu_{1}=$ $N^{-1} \sum_{i=1}^{N} a_{i i}=\operatorname{tr}(A) / N$ in (41). Then the parameter $\lambda$ is the minimizer of
+
+
+\begin{equation*}
+V(\lambda)=\frac{1}{N} \sum_{k=1}^{N}\left(\mathcal{N}_{k} f-P_{k}\right)^{2} /\left[\frac{1}{N} \operatorname{tr}(I-A)\right]^{2} \tag{45}
+\end{equation*}
+
+
+The generalized method allows to the obtaining of certain invariant properties as opposed to the ordinary cross-validation method Wahba (1990).
+
+\subsection*{5.2 Generalized maximum likelihood method}
+For the unknown parameter $\lambda$, we a construct maximum likelihood estimate in a certain stochastic model corresponding to the minimization problem (30). Consider the following stochastic model linking observations $Y_{k}$ to a known functional $\mathcal{D}_{k}$ of an unknown random function $F$ :
+
+
+\begin{equation*}
+Y_{k}=\mathcal{D}_{k} F+\varepsilon_{k}, k=1, \ldots, N \tag{46}
+\end{equation*}
+
+
+where
+
+$$
+\begin{gathered}
+\varepsilon \sim \mathcal{N}\left(0, \sigma^{2} I\right) \\
+F(t)=\sum_{i=1}^{p} \theta_{i} \varphi_{i}(t)+\sqrt{b} X(t), \\
+\\
+\theta \sim \mathcal{N}(0, a I)
+\end{gathered}
+$$
+
+$b$ is a positive constant,
+
+$$
+\varphi_{i}(t)=\frac{t^{i}}{i!},
+$$
+
+$X(t)$ is a Gaussian stochastic process:
+
+$$
+\mathbb{E} X(t)=0, \mathbb{E} X(t) X(s)=R^{1}(t, s)
+$$
+
+We repeat some of the notion used:
+
+$$
+\begin{gathered}
+T=\left\{\mathcal{D}_{k} \varphi_{j}\right\}, k=1, \ldots, N, j=1, \ldots, p, \\
+\Sigma=\left\{\left\langle\xi_{i}, \xi_{j}\right\rangle\right\} \\
+\varphi_{j}(t)=\frac{t^{j}}{j!} \\
+\xi_{k}=P_{1} \eta_{k}
+\end{gathered}
+$$
+
+where $P_{1}$ is the orthogonal projector onto $W^{1}$.\\
+We will also use the QR -decomposition of the matrix $T$ :
+
+$$
+T=\left(Q_{1}: Q_{2}\right)\binom{R}{0}
+$$
+
+Using (46) and the fact that the sum of independent normal random variables is normal, we find that the observations are normally distributed with known parameters:
+
+
+\begin{equation*}
+Y_{k} \sim \mathcal{N}\left(0, b\left(\eta T T^{\prime}+\Sigma+N \lambda I\right)\right) \tag{47}
+\end{equation*}
+
+
+where $\eta=a / b$.\\
+Now we formulate a theorem by Wahba (1990) stating the relationship of the original problem and the stochastic model:
+
+Theorem 5.1. Let
+
+$$
+\tilde{F}_{a}(t)=\mathbb{E}\left(F(t) \mid Y_{k}=y_{k}, k=1, \ldots, N\right),
+$$
+
+and also $f_{\lambda}(t)$ is the minimizer of
+
+$$
+\sum_{k=1}^{N}\left(y_{k}-\mathcal{D}_{k} f\right)^{2}+N \lambda \int_{0}^{T}\left(f^{(k)}\right)^{2}(\tau) d \tau
+$$
+
+where $\lambda=\sigma^{2} / N b$. Then $\forall t$ the following equality holds
+
+$$
+\lim _{a \rightarrow+\infty} \tilde{F}_{a}(t)=f_{\lambda}(t)
+$$
+
+Thus, if we get the maximum likelihood estimate in (47) with $\eta \rightarrow+\infty$, the corresponding function $f_{\lambda}(t)$ will be the solution of the original minimization problem. To obtain the maximum likelihood estimate, we make the change of variables
+
+\[
+\left(\begin{array}{c}
+z  \tag{48}\\
+\cdots \\
+w
+\end{array}\right)=\left(\begin{array}{c}
+Q_{2}^{\prime} \\
+\cdots \\
+\frac{1}{\sqrt{\eta}} T^{\prime}
+\end{array}\right) y .
+\]
+
+This substitution allows us to split the vector $y$ into two parts, where $w$ in the limit does not depend on the parameter $\lambda$ :
+
+$$
+\begin{gathered}
+z \sim \mathcal{N}\left(0, b\left(Q_{2}^{\prime} \Sigma Q_{2}+N \lambda I\right)\right), \lim _{\eta \rightarrow+\infty} \mathbb{E} z w^{\prime}=0 \\
+\lim _{\eta \rightarrow+\infty} \mathbb{E} w w^{\prime}=b\left(T^{\prime} T\right)\left(T^{\prime} T\right)
+\end{gathered}
+$$
+
+Therefore, to obtain the negative log-likelihood function it is sufficient to use only $z$ :
+
+
+\begin{equation*}
+G M L(\lambda)=\frac{z^{\prime}\left(Q_{2}^{\prime} \Sigma Q_{2}+N \lambda I\right)^{-1} z}{\left[\operatorname{det}\left(Q_{2}^{\prime} \Sigma Q_{2}+N \lambda I\right)^{-1}\right]^{1 /(n-p)}}, \tag{49}
+\end{equation*}
+
+
+Then, returning to $y$, we find that $\lambda$ is the minimizer of
+
+
+\begin{equation*}
+G M L(\lambda)=\frac{y^{\prime}(I-A(\lambda)) y}{\left[\operatorname{det}^{+}(I-A(\lambda))\right]^{1 /(n-p)}}, \tag{50}
+\end{equation*}
+
+
+where $\operatorname{det}^{+}$is a product of nonzero eigenvalues.\\
+The minimizer will be the maximum likelihood estimator of our regularization parameter $\lambda$.
+
+\subsection*{5.3 Applying results}
+We described two methods of choosing the regularization parameter: generalized cross-validation and generalized maximum likelihood. As a result, we have that $\lambda$ is determined as the minimum of (45) for GCV or of (50) for GML.
+
+We can now write the final algorithm for yield curve fitting:
+
+\begin{enumerate}
+  \item Select the initial approximation. Practice shows that a constant interest rate works quite effectively.
+  \item For a fixed $\lambda$ compute the new approximation for $f$ using (30)-(35).
+  \item Estimate $\lambda$ using (45) or (50).
+  \item The iterative process $2-3$ then continues until the difference between the old and the new approximations becomes less than a pre-specified value.
+\end{enumerate}
+
+Although the convergence of the algorithm has not been studied because of the complexity of the problem, in practice it converges in few iterations. Table 1 presents the statistics of the number of trials until convergence for our dataset.
+
+Table 1: Iterations for convergence
+
+\begin{center}
+\begin{tabular}{|c|c|}
+\hline
+Number of iterations & Number of trials \\
+\hline
+3 & 127 \\
+4 & 163 \\
+5 & 47 \\
+$>5$ & 3 \\
+\hline
+\end{tabular}
+\end{center}
+
+Table 2: Market liquidity statistics
+
+\begin{center}
+\begin{tabular}{|c|ccccccccccc|}
+\hline
+Number of traded bonds & 10 & 11 & 12 & 13 & 14 & 15 & 16 & 17 & 18 & 19 & 20 \\
+\hline
+Number of days & 1 & 3 & 5 & 16 & 10 & 23 & 40 & 94 & 80 & 61 & 9 \\
+\hline
+\end{tabular}
+\end{center}
+
+\section*{6 Testing}
+We compare our method with others using data on Russian bonds provided by \href{http://Cbonds.info}{Cbonds.info}. The data includes daily closing price and bid \& ask closing quotes for Russian domestic government bonds from 10 Jan 2012 untill 14 may 2013. For each bond we also have the schedule of its promised cash flows. Typically bonds are coupon bearing with interest semi-annually or quarterly. This particular market was selected for two reasons. Russia is one of the few countries where bonds are exchangetraded, and the Russian bond market is rather illiquid, which makes term structure estimation a worthy problem. Table 2 presents the liquidity statistics of the market. The first row is the number of bonds traded in the market. The second row is the number of days with this number of bonds traded on this day. One can see from the table 2 that the liquidity of the market is relatively low.
+
+We compare our method with several alternatives. Parametric methods by Nelson and Siegel (1987) and Svensson (1994) are the most used parametric term structure fitting methods. Svensson's generalization of Nelson-Siegel parametrization models the spot forward rate $s(t)$ as
+
+$$
+s(t)=\beta_{0}+\beta_{1} e^{-\frac{t}{\tau_{1}}}+\beta_{2} \frac{t}{\tau_{1}} e^{-\frac{t}{\tau_{1}}}+\beta_{3} \frac{t}{\tau_{2}} e^{-\frac{t}{\tau_{2}}},
+$$
+
+where $\beta_{0}, \beta_{1}, \beta_{2}, \beta_{3}, \tau_{1}, \tau_{2}$ are the model parameters.\\
+The model by Cox, Ingersoll and Ross (1985) is a general equilibrium model, which describes the stochastic dynamics of the short rate. One can infer the term structure equation from these dynamics.
+
+Table 3: Fitting accuracy for different methods
+
+\begin{center}
+\begin{tabular}{|c|cccc|}
+\hline
+Method & MAE & RMSE & MAE Normalized & RMSE Normalized \\
+\hline
+N-S & 0.2911 & 0.4787 & 3.9201 & 10.4407 \\
+Svensson & 0.2122 & 0.2643 & 3.2797 & 8.8879 \\
+CIR & 0.2170 & 0.2861 & 5.5097 & 17.8905 \\
+FNZ & 0.2717 & 0.3004 & 2.9625 & 7.4074 \\
+G-curve & 0.2452 & 0.3263 & 3.5723 & 9.7635 \\
+Our Method & $\mathbf{0 . 1 1 3 2}$ & $\mathbf{0 . 1 5 1 2}$ & $\mathbf{0 . 7 8 7 8}$ & $\mathbf{1 . 1 8 5 7}$ \\
+\hline
+\end{tabular}
+\end{center}
+
+Here we treat this term structure equation as just one more parametric fitting method, setting aside all dynamic interpretations.
+
+$$
+\left\{\begin{array}{ccc}
+Q(t) & = & \exp \left[-A(t)-B(t) r_{0}\right] \\
+A(t) & =\frac{2 \alpha}{\sigma^{2}}\left\{\ln \left[\frac{(\gamma+\beta)\left(1-e^{-\gamma t}\right)}{2 \gamma}+e^{-\gamma t}\right]+\gamma t\right\}-\frac{\alpha(\gamma+\beta) t}{\sigma^{2}} \\
+B(t) & = & \frac{2\left(1-e^{-\gamma t}\right)}{(\gamma+\beta)\left(1-e^{-\gamma t}\right)+2 \gamma e^{-\gamma t}} \\
+\gamma & = & \sqrt{\beta^{2}+2 \sigma^{2}}
+\end{array}\right.
+$$
+
+This is not the most common parametrization, but our experience shows that this parametrization is the easiest to estimate. When considering stochastic dynamics, the restriction $2 \beta>\sigma^{2}$ is usually imposed to ensure the positivity of the short rate. We relax this restriction since we only consider snapshot fitting. Fisher, Nychka and Zervos (1995) model is one of the most popular spline term structure fitting models, and almost the only one which does not require an exogenous smoothing parameter. We also add to our comparison the G-curve by Balabushkin (2004), a dynamic parametric approach based on an extension of Svensson parametrization and Extended Kalman Filter, because it is the official term structure model used by the exchange in the Russian market.
+
+Fitting results are reported in Table 3. For each method we report Mean Absolute Error (MAE), Root Mean Squared Error (RMSE), and the normalized MAE and RMSE. Normalized versions are obtained by normalizing the fitting error by the quoted bid-ask spread of the bond being fitted. All compared methods have been modified to accommodate these weights.
+
+One can see that our method significantly outperforms others. One might think that this may be due to the low values of $\alpha$ (that is, due to the lack of smoothing). However, a visual inspection (see Figure 1) reveals that the constructed term structures are all quite similar, and the one constructed by
+
+Table 4: Measures of smoothness
+
+\begin{center}
+\begin{tabular}{|c|c|c|c|c|}
+\hline
+Method & \begin{tabular}{c}
+Length of the \\
+yield curve \\
+\end{tabular} & \begin{tabular}{c}
+Length of the \\
+forward curve \\
+\end{tabular} & \begin{tabular}{c}
+$\int\left(r^{\prime \prime}\right)^{2} d x$ of the \\
+yield curve \\
+\end{tabular} & \begin{tabular}{c}
+$\int\left(f^{\prime \prime}\right)^{2} d x$ of the \\
+forward curve \\
+\end{tabular} \\
+\hline
+Our method & 16.1136 & 16.7672 & 0.1486 & 0.1511 \\
+N-S & 16.4865 & 18.4099 & 0.5712 & 0.5654 \\
+Svensson & 18.4607 & 18.6050 & 0.6201 & 0.6148 \\
+CIR & 16.1384 & 17.7763 & 0.2134 & 0.3452 \\
+FNZ & 17.2605 & 24.0861 & 0.3810 & 0.4433 \\
+G-curve & 16.1809 & 18.2778 & 0.5512 & 0.6028 \\
+\hline
+\end{tabular}
+\end{center}
+
+our method is even more smooth than the one constructed by FNZ. To further back this statement, we also report several measures that are often used for evaluating the smoothness of a zero-coupon yield curve (van Deventer and Uyemura (1992)). In particular, the smoothness of the zero-coupon yield curve can be measured as its length (or the length of the forward curve), another approach is to calculate the integral of the square of the second derivative (of spot or forward rates). In Table 4 we present different smoothness measures for all methods. Our method uses the smoothness of the forward curve in the problem formulation (although our objective does not coincide with the reported smoothness measure), so we would expect the values in the last column to be slightly biased towards the new method. The smoothness is not the key fitting performance measure. The fitted curve only has to be smooth enough, although if one method produces fitted curves which exhibit at the same time more accuracy and more smoothness, then this method should be considered superior, because accuracy and smoothness represent the two conflicting goals. The same holds if one estimate is better in accuracy and has the same smoothness or vice versa.\\
+\includegraphics[max width=\textwidth, center]{2025_01_24_49f93fe7b30b9becf110g-25}
+
+Figure 1: Term structures fitted by different methods.
+
+\section*{7 Conclusion}
+We have described the mathematical problem of the nonparametric estimation of interest rate term structure, proposed its regularization and presented an iterative numerical algorithm that automatically estimates the regularization parameter. The proposed algorithm has several desirable properties unlike most alternative methods, it guarantees the non-negativeness of interest rates, it takes into account the liquidity of the market and the uncertainties of observable quoted prices (via different weights for different bonds). However, the main advantage of the proposed method is that it does not need an exogenously defined smoothing (regularization) parameter, as it is automatically determined within the algorithm, which is essential when dealing with noisy data.
+
+\section*{References}
+Adams K. and van Deventer D. Fitting yield curves and forward rate curves with maximum smoothness // The Journal of Fixed Income. - 1994. - Vol. 4, no. 1. - P. 52-62.
+
+Andersen L. Discount curve construction with tension splines // Review of Derivatives Research. 2008. - Vol. 10, no. 3. - P. 227-267.
+
+URL: \href{http://link.springer.com/article/10.1007%2Fs11147-008-9021-2}{http://link.springer.com/article/10.1007\%2Fs11147-008-9021-2}.
+
+Andersen L. and Piterbarg V. Interest Rate Modeling. Term Structure Models. - 2010.
+
+Balabushkin A., Gambarov G. and Shevtchuk I. Fitting the Term Structure of Interest Rates [In Russian] // Rynok Tsennykh Bumag. - 2004. - Vol. 11,13. -
+
+Bates D. M., Watts D. G. Nonlinear Regression Analysis and Its Applications. Wiley Series in Probability and Statistics. - Hoboken, NJ, USA : John Wiley and Sons, Inc., 1988.ISBN: 9780470316757.
+
+Cox J. C, Ingersoll Jr J. E, Ross S. A. A Theory of the Term Structure of Interest Rates // Econometrica. - 1985. - Vol. 53, no. 2. - P. 385-408. - URL: \href{http://www.jstor.org/stable/10.2307/1911242}{http://www.jstor.org/stable/10.2307/1911242}.
+
+Francis X. Diebold and Canlin Li. Forecasting the term structure of government bond yields. // Journal of Econometrics. - 2006. -
+
+URL: \href{http://www.sciencedirect.com/science/article/pii/S0304407605000795}{http://www.sciencedirect.com/science/article/pii/S0304407605000795}.
+
+Fama E. and Bliss R.R. The information in long-maturity forward rates // The American Economic Review. - 1987. - Vol. 77 no. 4. - P. 680-692.
+
+Fisher M., Nychka D., Zervos D.. Fitting the term structure of interest rates with smoothing splines. 1995. - URL: \href{http://papers.ssrn.com/sol3/papers.cfm?abstract_id=6260}{http://papers.ssrn.com/sol3/papers.cfm?abstract\_id=6260}.
+
+Gimeno R. and Nave J.M. A genetic algorithm estimation of the term structure of interest rates // Computational Statistics and Data Analysis. - 2009. - Vol. 53 no. 6. - P. 2236-2250.
+
+URL: \href{http://www.sciencedirect.com/science/article/pii/S0167947308004994}{http://www.sciencedirect.com/science/article/pii/S0167947308004994}.
+
+Hagan P.S. and West G. Interpolation Methods for Curve Construction // Applied Mathematical Finance. - 2006. - Vol. 13, no. 2. - P. 89-129.
+
+URL: \href{http://www.tandfonline.com/doi/abs/10.1080/13504860500396032}{http://www.tandfonline.com/doi/abs/10.1080/13504860500396032}.
+
+James J. and Webber N. Interest Rate Modelling. - 2000.
+
+Jarrow R. Forward Rate Curve Smoothing. // Annual Review of Financial Economics. - 2014.
+
+Ke C, Wang Y. Nonlinear Nonparametric Regression Models. - 2002. - URL: $\mathrm{http}: / / c i t e s e e r x . i s t . p s u . e d u / v i e w d o c / d o w n l o a d ? d o i=10.11 .1$.392.8123andrep=rep 1 andtype=pdf.
+
+Lapshin V. Determining the Term Structure of Interest Rates // Moscow University Computational Mathematics and Cybernetics. - 2009. - Vol. 33, no. 4. - P. 206-213.
+
+Laurini M.P. and Hotta L.K. Bayesian extensions to Diebold-Li term structure model // International Review of Financial Analysis. - 2010. - Vol. 19, no. 5. - P. 342-350. URL: \href{http://www.sciencedirect.com/science/article/pii/S1057521910000578}{http://www.sciencedirect.com/science/article/pii/S1057521910000578}.
+
+Lin B.H. Fitting term structure of interest rates using B-splines: the case of Taiwanese Government bonds // Applied Financial Economics. - 2002. - Vol. 12. - P. 57-54.
+
+Linton O., Mammen E., Nielsen J.P., Tanggaard C. Yield curve estimation by kernel smoothing methods // Journal of Econometrics. - 2001. - Vol. 105 no. 1. - P. 185-223.
+
+URL: \href{http://www.sciencedirect.com/science/article/pii/S0304407601000756}{http://www.sciencedirect.com/science/article/pii/S0304407601000756}.
+
+McCulloch J. Measuring the term structure of interest rates // The Journal of Business. - 1971. Vol. 44, no. 1. - P. 19-31. - URL: \href{http://www.jstor.org/stable/10.2307/2351832}{http://www.jstor.org/stable/10.2307/2351832}.
+
+McCulloch J. The tax-adjusted yield curve // The Journal of Finance. - 1975. - Vol. 30, no. 3. P. 811-830. - URL: \href{http://www.jstor.org/stable/10.2307/2326860}{http://www.jstor.org/stable/10.2307/2326860}.
+
+Nelson C. R and Siegel A. F. Parsimonious Modeling of Yield Curves // Journal of Business. 1987. - Vol. 60, no. 4. - P. 473-489.
+
+Sanchez J. and Gomez A.T. Estimating a fuzzy term structure of interest rates using fuzzy regression techniques // European Journal of Operational Research. - 2004. - Vol. 154 no. 3. - P. 803-818. URL: \href{http://www.sciencedirect.com/science/article/pii/S0377221702008548}{http://www.sciencedirect.com/science/article/pii/S0377221702008548}.
+
+Schmidt W.M. Interest rate term structure modelling // European Journal of Operational Research. 2011. - Vol. 214, no. 1. - P. 1-14.
+
+URL: \href{http://www.sciencedirect.com/science/article/pii/S0377221711000877}{http://www.sciencedirect.com/science/article/pii/S0377221711000877}.
+
+Shea G. S. Pitfalls in Smoothing Interest Rate Term Structure Data: Equilibrium Models and Spline Approximations // Journal of Financial and Quantitative Analysis. - 1984. - Vol. 19, no. 3. P. 253-269.
+
+Smirnov S and Zakharov A. A Liquidity-Based Robust Spline Fitting of Spot Yield Curve Providing Positive Forward Rates: EFFAS-EBC Working Paper. - 2003.
+
+Steeley J. Estimating the Gilt-Edged Term Structure: Basis Splines and Confidence Intervals // Journal of Business Finance and Accounting. - 1991. - Vol. 18, no. 4. - P. 513-529. - URL: \href{http://onlinelibrary.wiley.com/doi/10.1111/j.1468-5957.1991.tb01119.x/abstract}{http://onlinelibrary.wiley.com/doi/10.1111/j.1468-5957.1991.tb01119.x/abstract}.
+
+Svensson L. E. Estimating and Interpreting Forward Interest Rates: Sweden 1992-1994 : Working Paper : 4871 / National Bureau of Economic Research .- 1994. - URL: \href{http://www.nber.org/papers/w4871}{http://www.nber.org/papers/w4871}.
+
+Tikhonov A.N and Arsenin V. Ya. Solution of Ill-Posed Problems. - Nauka, Moscow, 1979.\\
+van Deventer D., Uyemura D. Financial Risk Management in Banking: The Theory and Application of Asset and Liability Management. - 1992.
+
+Vasicek O. A, Fong H. G. Term Structure Modeling Using Exponential Splines // The Journal of Finance. - 1982. - Vol. 37, no. 2. - P. 339-348.
+
+Waggoner D. F. Spline methods for extracting interest rate curves from coupon bond prices / Federal Reserve Bank of Atlanta Working Paper .- 1997.- URL: \href{http://papers.ssrn.com/sol3/papers.cfm?abstract_id=86789}{http://papers.ssrn.com/sol3/papers.cfm?abstract\_id=86789}.
+
+Wahba G. Spline models for observational data. - SIAM, 1990. - P. 169. - ISBN: 0898712440.
+
+\section*{Authors:}
+\begin{enumerate}
+  \item Victor Lapshin, Higher School of Economics (Moscow, Russia), Financial Engineering and Risk Management Laboratory. Research Fellow;
+\end{enumerate}
+
+E-mail: \href{mailto:vlapshin@hse.ru}{vlapshin@hse.ru}\\
+2. Victor Lapshin, Higher School of Economics (Moscow, Russia), Financial Engineering and Risk Management Laboratory. Research Assistant;
+
+E-mail: \href{mailto:vkaushanskiy@hse.ru}{vkaushanskiy@hse.ru}
+
+Any opinions or claims contained in this Working Paper do not necessarily reflect the views of National Research University Higher School of Economics.\\
+©Lapshin, Kaushanskiy, 2014
+
+
+\end{document}
