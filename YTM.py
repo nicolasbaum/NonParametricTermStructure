@@ -12,7 +12,7 @@ class YTMCalculator(object):
     def calculate( self, paymentsDict, price):
         def f(ytm):
             return price-self.npv(paymentsDict, ytm)
-        return optimize.brentq(f,-1,1)
+        return optimize.brentq(f, -0.999999, 20.0)
 
     def npv(self, paymentsDict, ytm):
         result = 0
@@ -61,3 +61,31 @@ class YTMCalculator(object):
         yields = [0] + yields
 
         return interpolate.interp1d( maturitiesInYears, yields, bounds_error=False, fill_value='extrapolate',kind='linear' )
+    
+def bondYTMfromZeroDiscount(Fik, times, discountFactors, bracket=(-1.0, 500.0)):
+    """
+    Given:
+      Fik: shape (m,) row of bond i's cashflows at times[0..m-1]
+      times: shape (m,) the time in years for columns
+      discountFactors: shape(m,) the discount factors from final zero curve => d_j = d(t_j)
+    
+    We compute:
+       P_calc = sum_j Fik[j] * discountFactors[j]
+    Then solve for y_i s.t.
+       sum_j [ Fik[j] * exp(-y_i * times[j]) ] == P_calc
+    
+    returns y_i (the single yield that reproduces the same price).
+    """
+    # 1) The theoretical price from the zero curve
+    P_calc = np.sum(Fik * discountFactors)
+
+    # 2) function for brent root
+    def f(y):
+        # single yield discount for all flows
+        return np.sum(Fik * np.exp(-y * times)) - P_calc
+
+    # 3) solve f(y)=0
+    # note bracket can be bigger if needed
+    # if the bond is overpriced or underpriced, might see sign issues
+    ySolution = optimize.brentq(f, bracket[0], bracket[1])
+    return ySolution
